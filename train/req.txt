@@ -1,0 +1,5 @@
+torch
+cupy
+numpy
+requests
+tqdm
