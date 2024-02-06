@@ -24,7 +24,7 @@ ifneq ($(findstring clang, $(CXX)),)
 	PGOUSE = -fprofile-instr-use=uralochka.profdata
 endif
 
-CXX_FLAGS = $(OPTIM) $(LIBS) $(INCLUDE_PATH) $(ENGINE_OPTS) -static
+CXX_FLAGS = $(OPTIM) $(LIBS) $(INCLUDE_PATH) $(ENGINE_OPTS)
 
 all:
 	$(CXX) $(CXX_FLAGS) $(PGOGEN) $(SRC) -o $(EXE)
