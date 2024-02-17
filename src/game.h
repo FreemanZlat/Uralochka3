@@ -101,6 +101,7 @@ private:
 
     bool _prune_pv_moves_count;
 
+    void lmr_init();
     void rules_parser(Rules &rules);
     // Процедуры поиска
     int search_aspiration(int depth, int previous_result, u16 &best_move);
@@ -117,5 +118,40 @@ private:
     friend class BookGen;
     friend class Duel;
 };
+
+extern int FUTILITY_PRUNING_HISTORY[];
+
+extern int COUNTER_PRUNING_DEPTH[];
+extern int COUNTER_PRUNING_HISTORY[];
+
+extern int SEE_KILL;
+extern int SEE_QUIET;
+
+extern double LMR_MOVES_0_0;
+extern double LMR_MOVES_0_1;
+extern double LMR_MOVES_1_0;
+extern double LMR_MOVES_1_1;
+
+extern double LMR_DEPTH_0;
+extern double LMR_DEPTH_1;
+
+extern int ASPIRATION_DELTA;
+extern int BETA_PRUNING;
+extern int ALPHA_PRUNING;
+extern int NULL_REDUCTION;
+extern int PROBCUT_BETA;
+extern int FUT_MARGIN_0;
+extern int FUT_MARGIN_1;
+extern int FUT_MARGIN_2;
+extern int HISTORY_REDUCTION;
+
+
+extern int TIME_MID;
+extern float TIME_MID_VAL;
+extern float TIME_INC_COEF_MIN;
+extern float TIME_INC_DIV_MIN;
+extern float TIME_INC_COEF_MAX;
+extern float TIME_INC_DIV_MAX;
+
 
 #endif // GAME_H

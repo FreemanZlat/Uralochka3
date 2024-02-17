@@ -14,33 +14,40 @@ static const std::map<char, int> &MORPH_PIECES = { {'q', Board::QUEEN},
                                                    {'b', Board::BISHOP},
                                                    {'n', Board::KNIGHT} };
 
-static const int FUTILITY_PRUNING_HISTORY[] = { 12000, 6000 };
+int FUTILITY_PRUNING_HISTORY[] = { 0, 0 };
 
-static const int COUNTER_PRUNING_DEPTH[] = { 3, 2 };
-static const int COUNTER_PRUNING_HISTORY[] = { -1000, -2500 };
+int COUNTER_PRUNING_DEPTH[] = { 0, 0 };
+int COUNTER_PRUNING_HISTORY[] = { 0, 0 };
 
-static const int SEE_KILL = -18;
-static const int SEE_QUIET = -70;
+int SEE_KILL = 0;
+int SEE_QUIET = 0;
 
-static const double LMR_MOVES_0_0 = 2.0;
-static const double LMR_MOVES_0_1 = 2.5;
-static const double LMR_MOVES_1_0 = 4.0;
-static const double LMR_MOVES_1_1 = 4.0;
+double LMR_MOVES_0_0 = 0;
+double LMR_MOVES_0_1 = 0;
+double LMR_MOVES_1_0 = 0;
+double LMR_MOVES_1_1 = 0;
 
-static const double LMR_DEPTH_0 = 0.75;
-static const double LMR_DEPTH_1 = 2.25;
+double LMR_DEPTH_0 = 0;
+double LMR_DEPTH_1 = 0;
 
-static const int TIME_MID = 50;
+int ASPIRATION_DELTA = 0;
+int BETA_PRUNING = 0;
+int ALPHA_PRUNING = 0;
+int NULL_REDUCTION = 0;
+int PROBCUT_BETA = 0;
+int FUT_MARGIN_0 = 0;
+int FUT_MARGIN_1 = 0;
+int FUT_MARGIN_2 = 0;
+int HISTORY_REDUCTION = 0;
 
-static const int ASPIRATION_DELTA = 15;
-static const int BETA_PRUNING = 75;
-static const int ALPHA_PRUNING = 3000;
-static const int NULL_REDUCTION = 200;
-static const int PROBCUT_BETA = 120;
-static const int FUT_MARGIN_0 = 90;
-static const int FUT_MARGIN_1 = 60;
-static const int FUT_MARGIN_2 = 160;
-static const int HISTORY_REDUCTION = 5000;
+static const int TIME_MARGIN = 50;
+
+int TIME_MID = 0;
+float TIME_MID_VAL = 0;
+float TIME_INC_COEF_MIN = 0;
+float TIME_INC_DIV_MIN = 0;
+float TIME_INC_COEF_MAX = 0;
+float TIME_INC_DIV_MAX = 0;
 
 
 Rules::Rules():
@@ -76,12 +83,17 @@ Game::Game()
 
     this->_eval.init(&this->_board);
 
+    this->_prune_pv_moves_count = true;
+
+    this->lmr_init();
+}
+
+void Game::lmr_init()
+{
     for (int i = 0; i < 9; ++i)
     {
         this->lmr_moves[0][i] = static_cast<int>(LMR_MOVES_0_0 + LMR_MOVES_0_1 * i * i / 4.5);
         this->lmr_moves[1][i] = static_cast<int>(LMR_MOVES_1_0 + LMR_MOVES_1_1 * i * i / 4.5);
-//        this->lmr_moves[0][i] = (4 + i * i) / 2;
-//        this->lmr_moves[1][i] = 4 + i * i;
     }
     for (int i = 0; i < 64; ++i)
         for (int j = 0; j < 64; ++j)
@@ -91,8 +103,6 @@ Game::Game()
             else
                 this->lmr_depth[i][j] = static_cast<int>(LMR_DEPTH_0 + std::log(static_cast<double>(i)) * std::log(static_cast<double>(j)) / LMR_DEPTH_1);
         }
-
-    this->_prune_pv_moves_count = true;
 }
 
 void Game::set_uci(UCI *uci)
@@ -280,6 +290,10 @@ void Game::go()
     // Засекаем таймер
     this->_timer.start();
 
+#ifdef IS_TUNING
+    this->lmr_init();
+#endif
+
     this->_best_depth = 0;
     this->_best_move = "y1z8";
     this->_sel_depth = 0;
@@ -401,7 +415,7 @@ void Game::rules_parser(Rules &rules)
     this->_time_max = 0;
     if (rules._movetime > 0)
     {
-        this->_time_max = rules._movetime - 200;
+        this->_time_max = rules._movetime - TIME_MARGIN;
         if (this->_time_max < 1)
             this->_time_max  = 1;
         this->_time_min = this->_time_max;
@@ -421,32 +435,29 @@ void Game::rules_parser(Rules &rules)
 
     if (time > 0)
     {
-        time -= 200;
-        if (time < 1)
-            time = 1;
+        int time_margin = std::max(1, time - TIME_MARGIN);
 
         if (rules._movestogo == 0)
         {
-            this->_time_min = -200 + (time + time_inc*25) / 50;
-            this->_time_max = -200 + (time + time_inc*25) / 8;
+            this->_time_min = -TIME_MARGIN + std::round((TIME_INC_COEF_MIN*time_inc + time) / TIME_INC_DIV_MIN);
+            this->_time_max = -TIME_MARGIN + std::round((TIME_INC_COEF_MAX*time_inc + time) / TIME_INC_DIV_MAX);
         }
         else
         {
+            // Нужно тюнить или пофиг? =)
             this->_time_min = (time + time_inc*rules._movestogo) * 2 / ((rules._movestogo + 1) * 3);
             this->_time_max = 9 * this->_time_min / 4;
         }
 
-        if (this->_time_min < 1)
-            this->_time_min = 1;
-        if (this->_time_min > time)
-            this->_time_min = time;
+        this->_time_min = std::max(1, this->_time_min);
+        this->_time_min = std::min(time_margin, this->_time_min);
 
-        if (this->_time_max < 1)
-            this->_time_max = 1;
-        if (this->_time_max > time)
-            this->_time_max = time;
+        this->_time_max = std::max(1, this->_time_max);
+        this->_time_max = std::min(time_margin, this->_time_max);
 
-        this->_time_mid = (this->_time_min + this->_time_max) / 2;
+        this->_time_mid = std::round((1.0 - TIME_MID_VAL) * this->_time_min + TIME_MID_VAL * this->_time_max);
+        this->_time_mid = std::max(1, this->_time_mid);
+        this->_time_mid = std::min(time_margin, this->_time_mid);
     }
 }
 
@@ -769,7 +780,7 @@ int Game::search(int depth, int ply, int alpha, int beta, u16 &best_move, int sk
             return eval;
 
         // Альфа-отсечения
-        if (depth <= 5 && eval + 3000 <= alpha)
+        if (depth <= 5 && eval + ALPHA_PRUNING <= alpha)
             return eval;
 
         // Нулевой ход
