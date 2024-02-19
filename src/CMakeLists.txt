@@ -78,8 +78,6 @@ if(USE_NN)
     endif()
 endif()
 
-# add_definitions(-DIS_TUNING)
-
 add_executable(Uralochka3 ${URALOCHKA_3_SRC} ${URALOCHKA_3_HDR} ${FATHOM_SRC} ${FATHOM_HDR} ${CNPY_SRC} ${CNPY_HDR} ${INCBIN_HDR} ${PSTREAMS_HDR})
 
 if(LINUX_STATIC)

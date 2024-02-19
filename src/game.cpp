@@ -772,16 +772,16 @@ int Game::search(int depth, int ply, int alpha, int beta, u16 &best_move, int sk
     if (!is_pv_node && !is_check)
     {
         // Razoring
-//        if (depth <= 1 && eval + 150 < alpha)
-//            return this->quiescence(ply, alpha, beta);
+        // if (depth <= 1 && eval + 150 < alpha)
+        //     return this->quiescence(ply, alpha, beta);
 
         // Бета-отсечения
         if (depth <= 8 && eval - BETA_PRUNING*(depth - improving) >= beta)
             return eval;
 
         // Альфа-отсечения
-        if (depth <= 5 && eval + ALPHA_PRUNING <= alpha)
-            return eval;
+        // if (depth <= 5 && eval + ALPHA_PRUNING <= alpha)
+        //     return eval;
 
         // Нулевой ход
         bool can_null = this->_board._nodes[ply-1]._move != 0 && (ply < 2 || this->_board._nodes[ply-2]._move != 0);
