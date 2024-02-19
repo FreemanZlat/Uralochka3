@@ -2,7 +2,7 @@
 
 CXX ?= clang++
 EXE ?= Uralochka3
-EVALFILE ?= nn/nn_1.3d_e500_l400_d400.nn
+EVALFILE ?= nn/nn_1.3db_e500_l400_d400.nn
 
 SRC = src/*.cpp src/fathom/tbprobe.c
 INCLUDE_PATH = -Isrc/fathom -Isrc/incbin
@@ -10,8 +10,7 @@ INCLUDE_PATH = -Isrc/fathom -Isrc/incbin
 LIBS = -std=c++17 -pthread
 OPTIM = -march=native -O3 -flto
 
-ENGINE_OPTS = -DUSE_NN -DNN_FILE=\"$(EVALFILE)\" -DUSE_POPCNT
-
+ENGINE_OPTS = -DUSE_NN -DNN_FILE=\"$(EVALFILE)\" -DUSE_POPCNT -DIS_TUNING
 
 ifneq ($(findstring g++, $(CXX)),)
 	PGOGEN = -fprofile-generate

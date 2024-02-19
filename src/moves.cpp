@@ -2,10 +2,10 @@
 
 #include "board.h"
 
-#include <algorithm>
-#include <cstdio>
+std::vector<int> SEE_PICES_VALUES = { 0, 20000, 0, 0, 0, 0, 0 };
 
-static const std::vector<int> &PICES_VALUES = { 0, 20000, 1300, 650, 400, 400, 100 };
+double HIST_COUNTER_COEFF = 0;
+double HIST_FOLLOWER_COEFF = 0;
 
 static const std::vector<char> &SYMBOLS = { '*', 'k', 'q', 'r', 'b', 'n', 'p' };
 
@@ -160,7 +160,7 @@ int Moves::get_history(int color, u16 move, int piece, int &counter_hist, int &f
         int to = (this->_move_follower >> 6) & 63;
         follower_hist = this->_history->_followers[1][this->_piece_follower][to][piece][move_to];
     }
-    return this->_history->_history[color][move & 63][move_to] + counter_hist + follower_hist;
+    return this->_history->_history[color][move & 63][move_to] + HIST_COUNTER_COEFF*counter_hist + HIST_FOLLOWER_COEFF*follower_hist;
 }
 
 u16 Moves::get_next(bool skip_quiets)
@@ -298,17 +298,17 @@ int Moves::SEE(u16 move)
             killed = Board::PAWN;
     }
 
-    int eval = PICES_VALUES[killed];
+    int eval = SEE_PICES_VALUES[killed];
     if (pawn_morph > 0)
     {
-        eval += PICES_VALUES[pawn_morph] - PICES_VALUES[piece];
+        eval += SEE_PICES_VALUES[pawn_morph] - SEE_PICES_VALUES[piece];
         piece = pawn_morph;
     }
 
     u64 all = this->_board->_all_pieces[0] | this->_board->_all_pieces[1];
     // Убрать взятие на проходе из all!!!
     all ^= 1ull << from;
-    return -this->see(to, 1-color, -eval, PICES_VALUES[piece], all);
+    return -this->see(to, 1-color, -eval, SEE_PICES_VALUES[piece], all);
 }
 
 int Moves::see(int to, int color, int score, int target, u64 all)
@@ -318,16 +318,16 @@ int Moves::see(int to, int color, int score, int target, u64 all)
         return score;
 
     int from = 255;
-    int new_target = PICES_VALUES[Board::KING] + 1;
+    int new_target = SEE_PICES_VALUES[Board::KING] + 1;
 
     while (attacks != 0)
     {
         int pos = Bitboards::poplsb(attacks);
         int piece = this->_board->_board[pos] & Board::PIECES_MASK;
-        if (PICES_VALUES[piece] < new_target)
+        if (SEE_PICES_VALUES[piece] < new_target)
         {
             from = pos;
-            new_target = PICES_VALUES[piece];
+            new_target = SEE_PICES_VALUES[piece];
         }
     }
 

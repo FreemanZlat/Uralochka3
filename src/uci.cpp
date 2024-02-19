@@ -5,6 +5,7 @@
 #include "hash.h"
 #include "syzygy.h"
 #include "neural.h"
+#include "tuning_params.h"
 
 #include <iostream>
 #include <algorithm>
@@ -23,6 +24,13 @@ UCI::UCI()
 
 void UCI::start(std::string version)
 {
+#ifdef IS_TUNING
+    TuningParams &params = TuningParams::instance();
+    for (const auto &param : params._params)
+        if (param.need_tuning)
+            std::cout << param.name << ", float, " << param.value << ", " << param.min << ", " << param.max << ", " << param.c_end << ", " << param.r_end << std::endl;
+#endif
+
     while(true)
     {
         // Читаем строку
@@ -40,12 +48,15 @@ void UCI::start(std::string version)
             std::cout << "id name " << version << std::endl;
             std::cout << "id author Ivan Maklyakov" << std::endl;
             std::cout << "option name Threads type spin default 1 min 1 max 512" << std::endl;
-            std::cout << "option name Hash type spin default 32 min 8 max 32768" << std::endl;
+            std::cout << "option name Hash type spin default 32 min 8 max 65536" << std::endl;
             std::cout << "option name Clear Hash type button" << std::endl;
             std::cout << "option name SyzygyPath type string default " << std::endl;
             std::cout << "option name SyzygyProbeDepth type spin default 0 min 0 max 63" << std::endl;
-            std::cout << "option name SyzygyProbeDepth type spin default 0 min 0 max 63" << std::endl;
-            std::cout << "option name UCI_Chess960 type check default false" << std::endl;
+            // std::cout << "option name UCI_Chess960 type check default false" << std::endl;
+#ifdef IS_TUNING
+            for (const auto &param : params._params)
+                std::cout << "option name " << param.name << " type string default " << param.value << std::endl;
+#endif
             // Всю инфу передали
             std::cout << "uciok" << std::endl;
         }
@@ -89,6 +100,7 @@ void UCI::start(std::string version)
                 Syzygy &egtb = Syzygy::instance();
                 egtb.set_depth(std::stoi(UCI::substring(input)));
             }
+/*
             else if (option == "UCI_Chess960")
             {
                 UCI::substring(input);  // пропускаем слово value
@@ -97,6 +109,16 @@ void UCI::start(std::string version)
                 for (auto &game : this->_games)
                     game.set_960(this->_is960);
             }
+*/
+#ifdef IS_TUNING
+            else
+            {
+                UCI::substring(input);  // пропускаем слово value
+                double value = std::stod(UCI::substring(input));
+                if (!params.set(option, value))
+                    std::cout << "info WARNING: no option: " << option << "!" << std::endl;
+            }
+#endif
         }
         else if (cmd == "ucinewgame")
         {

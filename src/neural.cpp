@@ -28,6 +28,10 @@ INCBIN(Model, NN_FILE);
 #define QUANTIZATION_COEFF_L1   (64)
 #define QUANTIZATION_COEFF_L2   (512)
 
+
+double EVAL_DIVIDER = 500.0;
+
+
 static const std::vector<std::vector<int>> &PIECE_TABLE = { { 0, 10, 4, 3, 2, 1, 0 }, { 5, 11, 9, 8, 7, 6, 5 } };
 
 static const int KING_TABLE[64] =

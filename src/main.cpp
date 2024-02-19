@@ -1,11 +1,9 @@
 #include "uci.h"
 #include "bitboards.h"
 #include "hash.h"
-#include "evalparams.h"
-#include "train_utils.h"
-#include "tests.h"
 #include "syzygy.h"
 #include "neural.h"
+#include "tuning_params.h"
 
 #include <iostream>
 #include <string>
@@ -98,6 +96,7 @@ int main(int argc, char** argv)
     Model::instance().init();
     Bitboards::instance();
     Syzygy::instance().init();
+    TuningParams::instance();
 
     UCI uci;
 
