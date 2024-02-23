@@ -5,14 +5,20 @@
 #include "hash.h"
 #include "syzygy.h"
 #include "neural.h"
+#ifdef IS_TUNING
 #include "tuning_params.h"
+#endif
 
 #include <iostream>
 #include <algorithm>
 
 // Спецификация протокола: http://wbec-ridderkerk.nl/html/UCIProtocol.html
 
+#ifdef USE_NN
 static const int EVAL_SCALE = 260;    // 260;
+#else
+static const int EVAL_SCALE = 100;
+#endif
 
 //#define TESTING
 
@@ -220,6 +226,7 @@ void UCI::non_uci(std::string input)
                 int threads = 1;
                 int time = 5;
                 int hash = 128;
+                std::string fen = "";
 
                 if (!input.empty())
                     threads = std::stoi(UCI::substring(input));
@@ -227,8 +234,10 @@ void UCI::non_uci(std::string input)
                     time = std::stoi(UCI::substring(input));
                 if (!input.empty())
                     hash = std::stoi(UCI::substring(input));
+                if (!input.empty())
+                    fen = input;
 
-                std::cout << "bench threads=" << threads << " time=" << time << " hash=" << hash << std::endl;
+                std::cout << "bench threads=" << threads << " time=" << time << " hash=" << hash << " position=" << (fen == "" ? "startpos" : fen) << std::endl;
 
                 TranspositionTable &table = TranspositionTable::instance();
                 if (hash > 0)
@@ -237,11 +246,26 @@ void UCI::non_uci(std::string input)
 
                 this->set_threads(threads);
 
+                if (fen == "")
+                    this->set_startpos();
+                else
+                    this->set_fen(fen);
+
                 Rules rules;
-                rules._movetime = time * 1000 + 100;
+                rules._movetime = time * 1000 + 50;
+
+                Timer timer;
                 this->go(rules);
+                auto time_total = timer.get();
+
+                u64 nodes_total = 0;
+                for (const auto &game : this->_games)
+                    nodes_total += game._nodes;
 
                 this->set_threads(1);
+
+                u64 nps = 1000ull * nodes_total / time_total;
+                std::cout << "bench: " << nps <<  std::endl;
             }
         }
 #ifdef USE_CNPY

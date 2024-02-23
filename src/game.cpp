@@ -944,7 +944,7 @@ int Game::search(int depth, int ply, int alpha, int beta, u16 &best_move, int sk
 
         int extension = 0;
         // Сингулярное продление
-        if (depth >= 8 &&
+        if (depth >= 6 &&
             skip_move == 0 &&
             hash_move == move &&
             ply != 0 &&
@@ -952,8 +952,8 @@ int Game::search(int depth, int ply, int alpha, int beta, u16 &best_move, int sk
             node._age_type == TTNode::BETA &&
             node._depth >= depth - 3)
         {
-            int beta_cut = node._value - 2*depth;
-            int res = search(depth / 2 - 1, ply, beta_cut - 1, beta_cut, best_move, move, cut_node);
+            int beta_cut = node._value - depth;
+            int res = search((depth-1) / 2, ply, beta_cut - 1, beta_cut, best_move, move, cut_node);
 
             if (res < beta_cut)
                 extension = 1;
@@ -962,12 +962,12 @@ int Game::search(int depth, int ply, int alpha, int beta, u16 &best_move, int sk
                 this->_board.moves_free();
                 return beta_cut;
             }
-//            else if (node._value >= beta)
-//                extension = -2;
-//            else if (cut_node)
-//                extension = -1;
-//            else if (node._value <= res)
-//                extension = -1;
+           else if (node._value >= beta)
+                extension = (is_pv_node ? 1 : 0) - 2;
+           else if (cut_node)
+               extension = -2;
+           else if (node._value <= res)
+               extension = -1;
         }
         // Если шах - увеличиваем глубину перебора
         if (is_check || pawn_morph != 0)
