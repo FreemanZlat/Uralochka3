@@ -19,8 +19,8 @@ int FUTILITY_PRUNING_HISTORY[] = { 0, 0 };
 int COUNTER_PRUNING_DEPTH[] = { 0, 0 };
 int COUNTER_PRUNING_HISTORY[] = { 0, 0 };
 
-int SEE_KILL = 0;
-int SEE_QUIET = 0;
+double SEE_KILL = 0;
+double SEE_QUIET = 0;
 
 double LMR_MOVES_0_0 = 0;
 double LMR_MOVES_0_1 = 0;
@@ -31,13 +31,26 @@ double LMR_DEPTH_0 = 0;
 double LMR_DEPTH_1 = 0;
 
 int ASPIRATION_DELTA = 0;
-int BETA_PRUNING = 0;
+double ASPIRATION_DELTA_INC = 0;
+double ASPIRATION_ALPHA_SHIFT = 0;
+double ASPIRATION_BETA_SHIFT = 0;
+
+int BETA_DEPTH = 0;
+double BETA_PRUNING = 0;
 int ALPHA_PRUNING = 0;
+
 int NULL_REDUCTION = 0;
+int PROBCUT_DEPTH = 0;
 int PROBCUT_BETA = 0;
+
 int FUT_MARGIN_0 = 0;
 int FUT_MARGIN_1 = 0;
 int FUT_MARGIN_2 = 0;
+
+int SINGULAR_DEPTH_1 = 0;
+int SINGULAR_DEPTH_2 = 0;
+double SINGULAR_COEFF = 0;
+
 int HISTORY_REDUCTION = 0;
 
 static const int TIME_MARGIN = 50;
@@ -499,7 +512,7 @@ int Game::search_aspiration(int depth, int previous_result, u16 &best_move)
         {
             if (this->_print_uci)
                 this->_uci->info(depth, this->_sel_depth, this->_timer.get(), res, UCI::UPPERBOUND, this->_board._nodes[0].get_pv());
-            beta = (alpha + beta) / 2;
+            beta = std::round((1.0 - ASPIRATION_BETA_SHIFT) * alpha + ASPIRATION_BETA_SHIFT * beta);
             alpha = alpha - delta;
             if (alpha < -20000)
                 alpha = -20000;
@@ -511,13 +524,14 @@ int Game::search_aspiration(int depth, int previous_result, u16 &best_move)
             this->set_bestmove(depth, best_move, res);
             if (this->_print_uci)
                 this->_uci->info(depth, this->_sel_depth, this->_timer.get(), res, UCI::LOWERBOUND, this->_board._nodes[0].get_pv());
+            alpha = std::round(ASPIRATION_ALPHA_SHIFT * alpha + (1.0 - ASPIRATION_ALPHA_SHIFT) * beta);
             beta = beta + delta;
             if (beta > 20000)
                 beta = 20000;
         }
 
         // Увеличиваем размер окна
-        delta = delta + 2 * delta / 3;
+        delta = ASPIRATION_DELTA_INC * delta;
     }
 
     return res;
@@ -776,7 +790,7 @@ int Game::search(int depth, int ply, int alpha, int beta, u16 &best_move, int sk
         //     return this->quiescence(ply, alpha, beta);
 
         // Бета-отсечения
-        if (depth <= 8 && eval - BETA_PRUNING*(depth - improving) >= beta)
+        if (depth <= BETA_DEPTH && eval - std::round(BETA_PRUNING*(depth - improving)) >= beta)
             return eval;
 
         // Альфа-отсечения
@@ -805,7 +819,7 @@ int Game::search(int depth, int ply, int alpha, int beta, u16 &best_move, int sk
 
         // ProbCut
         int probcut_beta = beta + PROBCUT_BETA;
-        if (skip_move == 0 && depth >= 5 && abs(beta) < 19000)
+        if (skip_move == 0 && depth >= (PROBCUT_DEPTH+1) && abs(beta) < 19000)
         {
             auto moves = this->_board.moves_init(ply, true);
             moves->update_hash(hash_move);
@@ -817,7 +831,7 @@ int Game::search(int depth, int ply, int alpha, int beta, u16 &best_move, int sk
 
                 int res = -quiescence(ply+1, -probcut_beta, -probcut_beta+1);
                 if (res >= probcut_beta)
-                    res = -search(depth-4, ply+1, -probcut_beta, -probcut_beta+1, best_move, 0, !cut_node);
+                    res = -search(depth-PROBCUT_DEPTH, ply+1, -probcut_beta, -probcut_beta+1, best_move, 0, !cut_node);
 
                 this->_board.move_undo(move, ply);
 
@@ -858,8 +872,8 @@ int Game::search(int depth, int ply, int alpha, int beta, u16 &best_move, int sk
     moves->update_hash(hash_move);
 
     int seeMargin[2];
-    seeMargin[0] = SEE_KILL * depth * depth;
-    seeMargin[1] = SEE_QUIET * depth;
+    seeMargin[0] = std::round(SEE_KILL * depth * depth);
+    seeMargin[1] = std::round(SEE_QUIET * depth);
 
     u64 output_nodes = 0;
 
@@ -944,16 +958,16 @@ int Game::search(int depth, int ply, int alpha, int beta, u16 &best_move, int sk
 
         int extension = 0;
         // Сингулярное продление
-        if (depth >= 6 &&
+        if (depth >= SINGULAR_DEPTH_1 &&
             skip_move == 0 &&
             hash_move == move &&
             ply != 0 &&
             node._value > -19000 && node._value < 19000 &&
             node._age_type == TTNode::BETA &&
-            node._depth >= depth - 3)
+            node._depth >= depth - SINGULAR_DEPTH_2)
         {
             int beta_cut = node._value - depth;
-            int res = search((depth-1) / 2, ply, beta_cut - 1, beta_cut, best_move, move, cut_node);
+            int res = search(std::round(SINGULAR_COEFF * (depth-1)), ply, beta_cut - 1, beta_cut, best_move, move, cut_node);
 
             if (res < beta_cut)
                 extension = 1;

@@ -124,8 +124,8 @@ extern int FUTILITY_PRUNING_HISTORY[];
 extern int COUNTER_PRUNING_DEPTH[];
 extern int COUNTER_PRUNING_HISTORY[];
 
-extern int SEE_KILL;
-extern int SEE_QUIET;
+extern double SEE_KILL;
+extern double SEE_QUIET;
 
 extern double LMR_MOVES_0_0;
 extern double LMR_MOVES_0_1;
@@ -136,13 +136,26 @@ extern double LMR_DEPTH_0;
 extern double LMR_DEPTH_1;
 
 extern int ASPIRATION_DELTA;
-extern int BETA_PRUNING;
+extern double ASPIRATION_DELTA_INC;
+extern double ASPIRATION_ALPHA_SHIFT;
+extern double ASPIRATION_BETA_SHIFT;
+
+extern int BETA_DEPTH;
+extern double BETA_PRUNING;
 extern int ALPHA_PRUNING;
+
 extern int NULL_REDUCTION;
+extern int PROBCUT_DEPTH;
 extern int PROBCUT_BETA;
+
 extern int FUT_MARGIN_0;
 extern int FUT_MARGIN_1;
 extern int FUT_MARGIN_2;
+
+extern int SINGULAR_DEPTH_1;
+extern int SINGULAR_DEPTH_2;
+extern double SINGULAR_COEFF;
+
 extern int HISTORY_REDUCTION;
 
 
