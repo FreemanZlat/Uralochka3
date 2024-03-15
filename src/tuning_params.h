@@ -51,13 +51,26 @@ public:
         TUNE_LMR_DEPTH_1,
 
         TUNE_ASP_DELTA,
+        TUNE_ASP_DELTA_INC,
+        TUNE_ASP_ALPHA,
+        TUNE_ASP_BETA,
+
+        TUNE_BETA_DEPTH,
         TUNE_BETA_PRUN,
         TUNE_ALPHA_PRUN,
+
         TUNE_NULL_REDUCT,
+        TUNE_PROBCUT_DEPTH,
         TUNE_PROBCUT_BETA,
+
         TUNE_FUT_MARGIN_0,
         TUNE_FUT_MARGIN_1,
         TUNE_FUT_MARGIN_2,
+
+        TUNE_SING_DEPTH_1,
+        TUNE_SING_DEPTH_2,
+        TUNE_SING_COEFF,
+
         TUNE_HIST_REDUCT,
 
         TUNE_EVAL_DIVIDER,
