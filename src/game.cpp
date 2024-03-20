@@ -800,7 +800,7 @@ int Game::search(int depth, int ply, int alpha, int beta, u16 &best_move, int sk
 
         // Бета-отсечения
         if (depth <= BETA_DEPTH && eval - std::round(BETA_PRUNING*(depth - improving)) >= beta)
-            return eval;
+            return (eval + beta) / 2;
 
         // Альфа-отсечения
         // if (depth <= 5 && eval + ALPHA_PRUNING <= alpha)
