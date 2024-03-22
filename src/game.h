@@ -143,7 +143,13 @@ extern double ASPIRATION_BETA_SHIFT;
 
 extern int BETA_DEPTH;
 extern double BETA_PRUNING;
-extern int ALPHA_PRUNING;
+extern double BETA_IMPROV_0;
+extern double BETA_IMPROV_1;
+extern double BETA_HASHHIT_0;
+extern double BETA_HASHHIT_1;
+extern double BETA_RETURN;
+
+// extern int ALPHA_PRUNING;
 
 extern double NULL_MIN;
 extern double NULL_REDUCTION;

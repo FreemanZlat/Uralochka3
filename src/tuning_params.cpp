@@ -121,9 +121,25 @@ void TuningParams::set(Type type, double value)
     case TUNE_BETA_PRUN:
         BETA_PRUNING = value;
         break;
-    case TUNE_ALPHA_PRUN:
-        ALPHA_PRUNING = std::round(value);
+    case TUNE_BETA_IMPROV_0:
+        BETA_IMPROV_0 = value;
         break;
+    case TUNE_BETA_IMPROV_1:
+        BETA_IMPROV_1 = value;
+        break;
+    case TUNE_BETA_HASHHIT_0:
+        BETA_HASHHIT_0 = value;
+        break;
+    case TUNE_BETA_HASHHIT_1:
+        BETA_HASHHIT_1 = value;
+        break;
+    case TUNE_BETA_RETURN:
+        BETA_RETURN = value;
+        break;
+
+    // case TUNE_ALPHA_PRUN:
+    //     ALPHA_PRUNING = std::round(value);
+    //     break;
 
     case TUNE_NULL_MIN:
         NULL_MIN = value;
@@ -259,8 +275,14 @@ TuningParams::TuningParams()
     this->_params[TuningParams::TUNE_ASP_BETA].set(      "TUNE_ASP_BETA",       true,   0.4892,     0.0,        1.0     );
 
     this->_params[TuningParams::TUNE_BETA_DEPTH].set(    "TUNE_BETA_DEPTH",     true,   7.3221,     4.0,        20.0    );
-    this->_params[TuningParams::TUNE_BETA_PRUN].set(     "TUNE_BETA_PRUN",      true,   76.3202,    65,         90.0    );
-    this->_params[TuningParams::TUNE_ALPHA_PRUN].set(    "TUNE_ALPHA_PRUN",     false,  3009.9027,  2600.0,     3400.0  );
+    this->_params[TuningParams::TUNE_BETA_PRUN].set(     "TUNE_BETA_PRUN",      true,   76.3202,    60.0,       90.0    );
+    this->_params[TuningParams::TUNE_BETA_IMPROV_0].set( "TUNE_BETA_IMPROV_0",  true,   0.0,        -30.0,      30.0    );
+    this->_params[TuningParams::TUNE_BETA_IMPROV_1].set( "TUNE_BETA_IMPROV_1",  true,   76.3202,    60.0,       90.0    );
+    this->_params[TuningParams::TUNE_BETA_HASHHIT_0].set("TUNE_BETA_HASHHIT_0", true,   0.0,        -30,        30.0    );
+    this->_params[TuningParams::TUNE_BETA_HASHHIT_1].set("TUNE_BETA_HASHHIT_1", true,   0.0,        -30,        30.0    );
+    this->_params[TuningParams::TUNE_BETA_RETURN].set(   "TUNE_BETA_RETURN",    true,   0.5,        0.0,        1.0     );
+
+    // this->_params[TuningParams::TUNE_ALPHA_PRUN].set(    "TUNE_ALPHA_PRUN",     false,  3009.9027,  2600.0,     3400.0  );
 
     this->_params[TuningParams::TUNE_NULL_MIN].set(      "TUNE_NULL_MIN",       true,   2.7447,     0.0,        10.0,   0.6     );
     this->_params[TuningParams::TUNE_NULL_REDUCTION].set("TUNE_NULL_REDUCTION", true,   5.3277,     0.0,        10.0,   0.6     );

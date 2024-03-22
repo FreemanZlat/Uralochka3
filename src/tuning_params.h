@@ -58,7 +58,13 @@ public:
 
         TUNE_BETA_DEPTH,
         TUNE_BETA_PRUN,
-        TUNE_ALPHA_PRUN,
+        TUNE_BETA_IMPROV_0,
+        TUNE_BETA_IMPROV_1,
+        TUNE_BETA_HASHHIT_0,
+        TUNE_BETA_HASHHIT_1,
+        TUNE_BETA_RETURN,
+
+        // TUNE_ALPHA_PRUN,
 
         TUNE_NULL_MIN,
         TUNE_NULL_REDUCTION,
