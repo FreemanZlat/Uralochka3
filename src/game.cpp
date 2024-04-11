@@ -21,6 +21,7 @@ int COUNTER_PRUNING_HISTORY[] = { 0, 0 };
 
 double SEE_KILL = 0;
 double SEE_QUIET = 0;
+int SEE_DEPTH = 0;
 
 double LMR_MOVES_0_0 = 0;
 double LMR_MOVES_0_1 = 0;
@@ -37,11 +38,25 @@ double ASPIRATION_BETA_SHIFT = 0;
 
 int BETA_DEPTH = 0;
 double BETA_PRUNING = 0;
-int ALPHA_PRUNING = 0;
+double BETA_IMPROV_0 = 0;
+double BETA_IMPROV_1 = 0;
+double BETA_HASHHIT_0 = 0;
+double BETA_HASHHIT_1 = 0;
+double BETA_RETURN = 0;
 
-int NULL_REDUCTION = 0;
+// int ALPHA_PRUNING = 0;
+
+double NULL_MIN = 0;
+double NULL_REDUCTION = 0;
+double NULL_DIV_1 = 0;
+double NULL_DIV_2 = 0;
+
 int PROBCUT_DEPTH = 0;
 int PROBCUT_BETA = 0;
+
+int IIR_PV_REDUCTION = 0;
+int IIR_CUT_DEPTH = 0;
+int IIR_CUT_REDUCTION = 0;
 
 int FUT_MARGIN_0 = 0;
 int FUT_MARGIN_1 = 0;
@@ -56,11 +71,11 @@ int HISTORY_REDUCTION = 0;
 static const int TIME_MARGIN = 50;
 
 int TIME_MID = 0;
-float TIME_MID_VAL = 0;
-float TIME_INC_COEF_MIN = 0;
-float TIME_INC_DIV_MIN = 0;
-float TIME_INC_COEF_MAX = 0;
-float TIME_INC_DIV_MAX = 0;
+double TIME_MID_VAL = 0;
+double TIME_INC_COEF_MIN = 0;
+double TIME_INC_DIV_MIN = 0;
+double TIME_INC_COEF_MAX = 0;
+double TIME_INC_DIV_MAX = 0;
 
 
 Rules::Rules():
@@ -790,8 +805,10 @@ int Game::search(int depth, int ply, int alpha, int beta, u16 &best_move, int sk
         //     return this->quiescence(ply, alpha, beta);
 
         // Бета-отсечения
-        if (depth <= BETA_DEPTH && eval - std::round(BETA_PRUNING*(depth - improving)) >= beta)
-            return eval;
+        if (depth <= BETA_DEPTH && eval - std::round(BETA_PRUNING*depth -
+                                                     (improving ? BETA_IMPROV_1 : BETA_IMPROV_0) -
+                                                     (hash_hit ? BETA_HASHHIT_1 : BETA_HASHHIT_0)) >= beta)
+            return std::round((1.0 - BETA_RETURN) * eval + BETA_RETURN * beta);
 
         // Альфа-отсечения
         // if (depth <= 5 && eval + ALPHA_PRUNING <= alpha)
@@ -804,10 +821,7 @@ int Game::search(int depth, int ply, int alpha, int beta, u16 &best_move, int sk
             this->_board.is_figures(this->_board.color(ply)))
         {
             // Редукция
-            int reduction = (eval - beta) / NULL_REDUCTION;
-            if (reduction > 3)
-                reduction = 3;
-            reduction += 4 + depth / 6;
+            int reduction = std::round(std::min(NULL_MIN, (eval - beta) / NULL_DIV_1) + NULL_REDUCTION + depth / NULL_DIV_2);
 
             this->_board.nullmove_do(ply);
             int res = -search(depth - reduction, ply+1, -beta, -beta+1, best_move, 0, !cut_node);
@@ -818,9 +832,9 @@ int Game::search(int depth, int ply, int alpha, int beta, u16 &best_move, int sk
         }
 
         // ProbCut
-        int probcut_beta = beta + PROBCUT_BETA;
         if (skip_move == 0 && depth >= (PROBCUT_DEPTH+1) && abs(beta) < 19000)
         {
+            const int probcut_beta = beta + PROBCUT_BETA;
             auto moves = this->_board.moves_init(ply, true);
             moves->update_hash(hash_move);
             u16 move = 0;
@@ -862,10 +876,16 @@ int Game::search(int depth, int ply, int alpha, int beta, u16 &best_move, int sk
         }
     }
 */
-    // IIR
+    // IIR как в СФ
     if (!(skip_move || is_check))
-        if (depth >= 4 && hash_move == 0 && (is_pv_node || cut_node))
-            depth--;
+    {
+        if (hash_move == 0 && is_pv_node)
+            depth -= IIR_PV_REDUCTION;
+        if (depth < 0)
+            return this->quiescence(ply, alpha, beta);
+        if (depth >= IIR_CUT_DEPTH && hash_move == 0 && cut_node)
+            depth -= IIR_CUT_REDUCTION;
+    }
 
     // Генерим ходы
     auto moves = this->_board.moves_init(ply);
@@ -945,7 +965,7 @@ int Game::search(int depth, int ply, int alpha, int beta, u16 &best_move, int sk
             }
 
             // Отсечение по SEE
-            if (depth <= 9 && !is_check)
+            if (depth <= SEE_DEPTH && !is_check)
                 if (moves->SEE(move) < seeMargin[is_quiet ? 1 : 0])
                     continue;
         }
@@ -1205,6 +1225,14 @@ int Game::quiescence(int ply, int alpha, int beta)
     TTNode::Type hash_type = TTNode::ALPHA;
     while ((move = moves->get_next()) != 0)
     {
+/*
+        if (!is_check)
+        {
+            const auto pawn_morph = (move >> 12) & 7;
+            if (pawn_morph == 0 && moves->SEE(move) + eval + 200 < alpha)
+                continue;
+        }
+*/
         if (!this->_board.move_do(move, ply))
             continue;
 

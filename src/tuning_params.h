@@ -41,6 +41,7 @@ public:
 
         TUNE_SEE_KILL,
         TUNE_SEE_QUIET,
+        TUNE_SEE_DEPTH,
 
         TUNE_LMR_0_0,
         TUNE_LMR_0_1,
@@ -57,11 +58,25 @@ public:
 
         TUNE_BETA_DEPTH,
         TUNE_BETA_PRUN,
-        TUNE_ALPHA_PRUN,
+        TUNE_BETA_IMPROV_0,
+        TUNE_BETA_IMPROV_1,
+        TUNE_BETA_HASHHIT_0,
+        TUNE_BETA_HASHHIT_1,
+        TUNE_BETA_RETURN,
 
-        TUNE_NULL_REDUCT,
+        // TUNE_ALPHA_PRUN,
+
+        TUNE_NULL_MIN,
+        TUNE_NULL_REDUCTION,
+        TUNE_NULL_DIV_1,
+        TUNE_NULL_DIV_2,
+
         TUNE_PROBCUT_DEPTH,
         TUNE_PROBCUT_BETA,
+
+        TUNE_IIR_PV_RED,
+        TUNE_IIR_CUT_DEPTH,
+        TUNE_IIR_CUT_RED,
 
         TUNE_FUT_MARGIN_0,
         TUNE_FUT_MARGIN_1,

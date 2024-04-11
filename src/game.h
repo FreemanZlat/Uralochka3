@@ -126,6 +126,7 @@ extern int COUNTER_PRUNING_HISTORY[];
 
 extern double SEE_KILL;
 extern double SEE_QUIET;
+extern int SEE_DEPTH;
 
 extern double LMR_MOVES_0_0;
 extern double LMR_MOVES_0_1;
@@ -142,11 +143,25 @@ extern double ASPIRATION_BETA_SHIFT;
 
 extern int BETA_DEPTH;
 extern double BETA_PRUNING;
-extern int ALPHA_PRUNING;
+extern double BETA_IMPROV_0;
+extern double BETA_IMPROV_1;
+extern double BETA_HASHHIT_0;
+extern double BETA_HASHHIT_1;
+extern double BETA_RETURN;
 
-extern int NULL_REDUCTION;
+// extern int ALPHA_PRUNING;
+
+extern double NULL_MIN;
+extern double NULL_REDUCTION;
+extern double NULL_DIV_1;
+extern double NULL_DIV_2;
+
 extern int PROBCUT_DEPTH;
 extern int PROBCUT_BETA;
+
+extern int IIR_PV_REDUCTION;
+extern int IIR_CUT_DEPTH;
+extern int IIR_CUT_REDUCTION;
 
 extern int FUT_MARGIN_0;
 extern int FUT_MARGIN_1;
@@ -160,11 +175,11 @@ extern int HISTORY_REDUCTION;
 
 
 extern int TIME_MID;
-extern float TIME_MID_VAL;
-extern float TIME_INC_COEF_MIN;
-extern float TIME_INC_DIV_MIN;
-extern float TIME_INC_COEF_MAX;
-extern float TIME_INC_DIV_MAX;
+extern double TIME_MID_VAL;
+extern double TIME_INC_COEF_MIN;
+extern double TIME_INC_DIV_MIN;
+extern double TIME_INC_COEF_MAX;
+extern double TIME_INC_DIV_MAX;
 
 
 #endif // GAME_H
