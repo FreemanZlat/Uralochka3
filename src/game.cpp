@@ -38,7 +38,13 @@ double ASPIRATION_BETA_SHIFT = 0;
 
 int BETA_DEPTH = 0;
 double BETA_PRUNING = 0;
-int ALPHA_PRUNING = 0;
+double BETA_IMPROV_0 = 0;
+double BETA_IMPROV_1 = 0;
+double BETA_HASHHIT_0 = 0;
+double BETA_HASHHIT_1 = 0;
+double BETA_RETURN = 0;
+
+// int ALPHA_PRUNING = 0;
 
 double NULL_MIN = 0;
 double NULL_REDUCTION = 0;
@@ -799,8 +805,10 @@ int Game::search(int depth, int ply, int alpha, int beta, u16 &best_move, int sk
         //     return this->quiescence(ply, alpha, beta);
 
         // Бета-отсечения
-        if (depth <= BETA_DEPTH && eval - std::round(BETA_PRUNING*(depth - improving)) >= beta)
-            return eval;
+        if (depth <= BETA_DEPTH && eval - std::round(BETA_PRUNING*depth -
+                                                     (improving ? BETA_IMPROV_1 : BETA_IMPROV_0) -
+                                                     (hash_hit ? BETA_HASHHIT_1 : BETA_HASHHIT_0)) >= beta)
+            return std::round((1.0 - BETA_RETURN) * eval + BETA_RETURN * beta);
 
         // Альфа-отсечения
         // if (depth <= 5 && eval + ALPHA_PRUNING <= alpha)
