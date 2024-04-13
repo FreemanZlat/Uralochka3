@@ -324,7 +324,6 @@ void Game::go()
 
     this->_best_depth = 0;
     this->_best_move = "y1z8";
-    this->_sel_depth = 0;
     this->_nodes = 0;
     this->_tbhits = 0;
     u16 best_move = 0;
@@ -340,6 +339,7 @@ void Game::go()
     // Постепенно перебираем всё глубже, начиная с глубины 1
     for (int i = depth_prev > 0 ? 4 : 1; i <= this->_depth_max; i += i < depth_prev ? 4 : 1)
     {
+        this->_sel_depth = 0;
         prev_move = best_move;
 
         // Синхронизируем глубину поиска с другими потоками
@@ -990,7 +990,11 @@ int Game::search(int depth, int ply, int alpha, int beta, u16 &best_move, int sk
             int res = search(std::round(SINGULAR_COEFF * (depth-1)), ply, beta_cut - 1, beta_cut, best_move, move, cut_node);
 
             if (res < beta_cut)
+            {
                 extension = 1;
+                if (!is_pv_node)
+                    extension++;
+            }
             else if (beta_cut >= beta)
             {
                 this->_board.moves_free();

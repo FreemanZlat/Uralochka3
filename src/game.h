@@ -173,7 +173,6 @@ extern double SINGULAR_COEFF;
 
 extern int HISTORY_REDUCTION;
 
-
 extern int TIME_MID;
 extern double TIME_MID_VAL;
 extern double TIME_INC_COEF_MIN;
