@@ -85,6 +85,8 @@ public:
         TUNE_SING_DEPTH_1,
         TUNE_SING_DEPTH_2,
         TUNE_SING_COEFF,
+        TUNE_SING_EXTS,
+        // TUNE_SING_BETA,
 
         TUNE_HIST_REDUCT,
 

@@ -18,6 +18,7 @@ struct Node
     int _move_piece;
     int _move_killed;
     int _move_en_passant;
+    int _extensions;
     u16 _pv[128];
 
     std::string get_pv(int max = -1);
