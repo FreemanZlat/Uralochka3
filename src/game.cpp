@@ -65,6 +65,8 @@ int FUT_MARGIN_2 = 0;
 int SINGULAR_DEPTH_1 = 0;
 int SINGULAR_DEPTH_2 = 0;
 double SINGULAR_COEFF = 0;
+int SINGULAR_EXTS = 0;
+// int SINGULAR_BETA = 0;
 
 int HISTORY_REDUCTION = 0;
 
@@ -324,13 +326,15 @@ void Game::go()
 
     this->_best_depth = 0;
     this->_best_move = "y1z8";
-    this->_sel_depth = 0;
     this->_nodes = 0;
     this->_tbhits = 0;
     u16 best_move = 0;
     int res = this->_best_value;
     int prev_best = this->_best_value;
     int prev_move = 0;
+
+    this->_board._nodes[0]._extensions = 0;
+    this->_board._nodes[1]._extensions = 0;
 
 //    if (this->_time_min != 0 && this->_print_uci)
 //        std::cout << "info string time_min = " << this->_time_min / 1000.0 << "  time_max = " << this->_time_max / 1000.0 << std::endl;
@@ -340,6 +344,7 @@ void Game::go()
     // Постепенно перебираем всё глубже, начиная с глубины 1
     for (int i = depth_prev > 0 ? 4 : 1; i <= this->_depth_max; i += i < depth_prev ? 4 : 1)
     {
+        this->_sel_depth = 0;
         prev_move = best_move;
 
         // Синхронизируем глубину поиска с другими потоками
@@ -976,6 +981,7 @@ int Game::search(int depth, int ply, int alpha, int beta, u16 &best_move, int sk
             moves_quiets++;
         }
 
+        this->_board._nodes[ply+1]._extensions = this->_board._nodes[ply]._extensions;
         int extension = 0;
         // Сингулярное продление
         if (depth >= SINGULAR_DEPTH_1 &&
@@ -990,7 +996,16 @@ int Game::search(int depth, int ply, int alpha, int beta, u16 &best_move, int sk
             int res = search(std::round(SINGULAR_COEFF * (depth-1)), ply, beta_cut - 1, beta_cut, best_move, move, cut_node);
 
             if (res < beta_cut)
+            {
                 extension = 1;
+                if (!is_pv_node && this->_board._nodes[ply]._extensions <= SINGULAR_EXTS)
+                {
+                    this->_board._nodes[ply+1]._extensions++;
+                    extension++;
+                    // if (is_quiet && res < beta_cut - SINGULAR_BETA)
+                    //     extension++;
+                }
+            }
             else if (beta_cut >= beta)
             {
                 this->_board.moves_free();
@@ -1005,7 +1020,7 @@ int Game::search(int depth, int ply, int alpha, int beta, u16 &best_move, int sk
         }
         // Если шах - увеличиваем глубину перебора
         if (is_check || pawn_morph != 0)
-            extension = 1;
+            extension++;
 
         int search_depth = depth + extension;
 

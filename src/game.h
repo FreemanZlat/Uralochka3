@@ -170,9 +170,10 @@ extern int FUT_MARGIN_2;
 extern int SINGULAR_DEPTH_1;
 extern int SINGULAR_DEPTH_2;
 extern double SINGULAR_COEFF;
+extern int SINGULAR_EXTS;
+// extern int SINGULAR_BETA;
 
 extern int HISTORY_REDUCTION;
-
 
 extern int TIME_MID;
 extern double TIME_MID_VAL;
