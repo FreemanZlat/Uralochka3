@@ -18,7 +18,6 @@ struct Node
     int _move_piece;
     int _move_killed;
     int _move_en_passant;
-    int _extensions;
     u16 _pv[128];
 
     std::string get_pv(int max = -1);
@@ -112,8 +111,6 @@ private:
     void piece_remove(int ply, int color, int piece, int square, bool nn);
     void piece_add(int ply, int color, int piece, int square, bool nn);
 
-    bool _is960;
-
     // Доска
     int _board[64];
 
@@ -126,11 +123,6 @@ private:
     int _bking;
     int _wking_area;
     int _bking_area;
-
-    int _start_wrook_00;
-    int _start_wrook_000;
-    int _start_brook_00;
-    int _start_brook_000;
 
     // Узлы дерева при переборе
     Node _nodes[128];

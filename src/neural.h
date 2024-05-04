@@ -1,6 +1,7 @@
 #ifndef NEURAL_H
 #define NEURAL_H
 
+#include <vector>
 #include <string>
 
 #include "common.h"
@@ -18,6 +19,7 @@
 //#define L1_OUT_SIZE_P   (L1_OUT_SIZE)
 #define L1_OUT_SIZE_P2  (L1_OUT_SIZE_P * 2)
 
+#define EVAL_DIVIDER    (500.0)
 #define USE_INTRIN  // fix for case when OUT_SIZE != 1
 //#define CLIPPED_RELU
 
@@ -80,7 +82,5 @@ public:
 private:
     Accumulator _stack[128];
 };
-
-extern double EVAL_DIVIDER;
 
 #endif // NEURAL_H

@@ -39,7 +39,6 @@ class Game
 public:
     Game();
     void set_uci(UCI *uci);
-    void set_960(bool is960);
     // Установка стартовой позиции
     void set_startpos();
     // Установка позиции из FEN
@@ -68,7 +67,6 @@ private:
     // Таймер
     Timer _timer;
     // Время на ход
-    int _time_margin;
     int _time_min;
     int _time_mid;
     int _time_max;
@@ -102,7 +100,6 @@ private:
 
     bool _prune_pv_moves_count;
 
-    void lmr_init();
     void rules_parser(Rules &rules);
     // Процедуры поиска
     int search_aspiration(int depth, int previous_result, u16 &best_move);
@@ -119,69 +116,5 @@ private:
     friend class BookGen;
     friend class Duel;
 };
-
-extern int FUTILITY_PRUNING_HISTORY[];
-
-extern int COUNTER_PRUNING_DEPTH[];
-extern int COUNTER_PRUNING_HISTORY[];
-
-extern double SEE_KILL;
-extern double SEE_QUIET;
-extern int SEE_DEPTH;
-
-extern double LMR_MOVES_0_0;
-extern double LMR_MOVES_0_1;
-extern double LMR_MOVES_1_0;
-extern double LMR_MOVES_1_1;
-
-extern double LMR_DEPTH_0;
-extern double LMR_DEPTH_1;
-
-extern int ASPIRATION_DELTA;
-extern double ASPIRATION_DELTA_INC;
-extern double ASPIRATION_ALPHA_SHIFT;
-extern double ASPIRATION_BETA_SHIFT;
-
-extern int BETA_DEPTH;
-extern double BETA_PRUNING;
-extern double BETA_IMPROV_0;
-extern double BETA_IMPROV_1;
-extern double BETA_HASHHIT_0;
-extern double BETA_HASHHIT_1;
-extern double BETA_RETURN;
-
-// extern int ALPHA_PRUNING;
-
-extern double NULL_MIN;
-extern double NULL_REDUCTION;
-extern double NULL_DIV_1;
-extern double NULL_DIV_2;
-
-extern int PROBCUT_DEPTH;
-extern int PROBCUT_BETA;
-
-extern int IIR_PV_REDUCTION;
-extern int IIR_CUT_DEPTH;
-extern int IIR_CUT_REDUCTION;
-
-extern int FUT_MARGIN_0;
-extern int FUT_MARGIN_1;
-extern int FUT_MARGIN_2;
-
-extern int SINGULAR_DEPTH_1;
-extern int SINGULAR_DEPTH_2;
-extern double SINGULAR_COEFF;
-extern int SINGULAR_EXTS;
-// extern int SINGULAR_BETA;
-
-extern int HISTORY_REDUCTION;
-
-extern int TIME_MID;
-extern double TIME_MID_VAL;
-extern double TIME_INC_COEF_MIN;
-extern double TIME_INC_DIV_MIN;
-extern double TIME_INC_COEF_MAX;
-extern double TIME_INC_DIV_MAX;
-
 
 #endif // GAME_H

@@ -106,8 +106,4 @@ private:
     int _piece_follower;
 };
 
-extern std::vector<int> SEE_PICES_VALUES;
-extern double HIST_COUNTER_COEFF;
-extern double HIST_FOLLOWER_COEFF;
-
 #endif // MOVES_H

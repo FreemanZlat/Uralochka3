@@ -1,9 +1,11 @@
 #include "uci.h"
 #include "bitboards.h"
 #include "hash.h"
+#include "evalparams.h"
+#include "train_utils.h"
+#include "tests.h"
 #include "syzygy.h"
 #include "neural.h"
-#include "tuning_params.h"
 
 #include <iostream>
 #include <string>
@@ -51,7 +53,6 @@
 // 38 - Новая обученная моедль. Тюнинг поиска.
 // 39 - Исправление зеркалирования позиции в нейросети. Новая обученная моедль. Тюнинг поиска. Новая аллокация хэш-таблицы. Оптимизация сортировки ходов.
 // 40 - Новая архитектура сети. Часть датасета из игр против других движков.
-// 41 - Тюнинг поиска (SPSA рулит!). Новая сеть.
 
 
 #if defined(__AVX512F__)
@@ -87,7 +88,7 @@
 #endif
 
 
-#define URALOCHKA3 "Uralochka v3.41a"
+#define URALOCHKA3 "Uralochka v3.40a"
 
 int main(int argc, char** argv)
 {
@@ -97,7 +98,7 @@ int main(int argc, char** argv)
     Model::instance().init();
     Bitboards::instance();
     Syzygy::instance().init();
-    TuningParams::instance();
+//    Syzygy::instance().init("z:\\Syzygy");
 
     UCI uci;
 

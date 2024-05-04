@@ -4,6 +4,8 @@
 #include "board.h"
 #include "evalparams.h"
 
+#include <vector>
+
 class Evaluate
 {
 public:

@@ -47,8 +47,6 @@ public:
     u64 _isolated[8];
     u64 _passed[2][64];
 
-    u64 _bits_between[64][64];
-
     Magic _magic_rooks[64];
     Magic _magic_bishops[64];
 

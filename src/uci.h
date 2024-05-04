@@ -45,8 +45,6 @@ private:
 
     float _depth_average;
     int _depth_count;
-
-    bool _is960;
 };
 
 #endif // UCI_H

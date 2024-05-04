@@ -49,9 +49,8 @@ std::string Node::get_pv(int max)
 
 Board::Board()
 {
-    this->_is960 = false;
     this->_moves_cnt = 0;
-    for (int i = 0; i < 256; ++i)
+    for (int i = 0; i < 150; ++i)
         this->_moves[i].init(this, &this->_history);
     this->reset();
 }
@@ -91,11 +90,6 @@ void Board::set_fen(const std::string &fen)
     }
     this->_all_pieces[0] = 0;
     this->_all_pieces[1] = 0;
-
-    this->_start_wrook_00 = -1;
-    this->_start_wrook_000 = -1;
-    this->_start_brook_00 = -1;
-    this->_start_brook_000 = -1;
 
     int col = 0,
         row = 7,
@@ -138,32 +132,6 @@ void Board::set_fen(const std::string &fen)
         this->piece_add(-1, piece & Board::WHITE_MASK ? 0 : 1, piece, sq, false);
     }
 
-    // Стартовые позиции ладей (нужно для рокировок)
-    if (this->_bitboards[0][Board::ROOK] != 0)
-    {
-        this->_start_wrook_000 = Bitboards::lsb(this->_bitboards[0][Board::ROOK]);
-        this->_start_wrook_00 = Bitboards::msb(this->_bitboards[0][Board::ROOK]);
-        if (this->_start_wrook_000 == this->_start_wrook_00)
-        {
-            if (this->_start_wrook_000 > this->_wking)
-                this->_start_wrook_000 = -1;
-            else
-                this->_start_wrook_00 = -1;
-        }
-    }
-    if (this->_bitboards[1][Board::ROOK] != 0)
-    {
-        this->_start_brook_000 = Bitboards::lsb(this->_bitboards[1][Board::ROOK]);
-        this->_start_brook_00 = Bitboards::msb(this->_bitboards[1][Board::ROOK]);
-        if (this->_start_brook_000 == this->_start_brook_00)
-        {
-            if (this->_start_brook_000 > this->_bking)
-                this->_start_brook_000 = -1;
-            else
-                this->_start_brook_00 = -1;
-        }
-    }
-
     // Чей ход
     c = fen[pos++];
     if (c == 'w')
@@ -199,37 +167,11 @@ void Board::set_fen(const std::string &fen)
             this->_nodes[0]._flags |= FLAG_BLACK_000;
             this->_nodes[0]._hash ^= zorb._black_000;
         }
-        else if (c >= 'A' && c <= 'H')
-        {
-            this->_is960 = true;
-            if (c > ('A' + this->_wking % 8))
-            {
-                this->_nodes[0]._flags |= FLAG_WHITE_00;
-                this->_nodes[0]._hash ^= zorb._white_00;
-            }
-            else
-            {
-                this->_nodes[0]._flags |= FLAG_WHITE_000;
-                this->_nodes[0]._hash ^= zorb._white_000;
-            }
-        }
-        else if (c >= 'a' && c <= 'h')
-        {
-            this->_is960 = true;
-            if (c > ('a' + this->_bking % 8))
-            {
-                this->_nodes[0]._flags |= FLAG_BLACK_00;
-                this->_nodes[0]._hash ^= zorb._black_00;
-            }
-            else
-            {
-                this->_nodes[0]._flags |= FLAG_BLACK_000;
-                this->_nodes[0]._hash ^= zorb._black_000;
-            }
-        }
     }
 
     // Взятие на проходе (битое поле)
+    // position startpos moves h2h4 f7f5 h4h5 g7g5
+    // position fen rnbqkbnr/ppppp2p/8/5ppP/8/8/PPPPPPP1/RNBQKBNR w KQkq g6 0 3
     c = fen[pos++];
     if (c != '-')
     {
@@ -308,8 +250,6 @@ std::string Board::get_fen(int ply)
     result += this->_nodes[ply]._flags & FLAG_WHITE_000 ? "Q" : "";
     result += this->_nodes[ply]._flags & FLAG_BLACK_00 ? "k" : "";
     result += this->_nodes[ply]._flags & FLAG_BLACK_000 ? "q" : "";
-
-    /// TODO: chess960
 
     result += " -";
 

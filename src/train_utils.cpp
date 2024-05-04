@@ -471,7 +471,7 @@ static const std::vector<std::string> &SYZYGY_PATHES = {
     "d:\\Chess\\Syzygy",
 };
 
-DataGen::DataGen()
+DataGen::DataGen(int hash1, int hash2, std::string book)
 {
     this->_games.clear();
     this->_nns.clear();
@@ -479,10 +479,7 @@ DataGen::DataGen()
 #ifdef USE_PSTREAMS
     this->_engines.clear();
 #endif
-}
 
-void DataGen::init(int threads_num, int hash1, int hash2, std::string book)
-{
     this->_hash.resize(hash2);
 
     TranspositionTable &table = TranspositionTable::instance();
@@ -493,12 +490,6 @@ void DataGen::init(int threads_num, int hash1, int hash2, std::string book)
 
     if (!book.empty())
         this->_book.load(book);
-
-    for (const auto &path: SYZYGY_PATHES)
-        if (Syzygy::instance().init(path))
-            break;
-
-    this->_games.resize(threads_num);
 }
 
 #ifdef USE_PSTREAMS
@@ -525,8 +516,14 @@ void DataGen::set_enemy(std::string path_to_engine, int depth, int time, int nod
 }
 #endif
 
-void DataGen::gen(std::string out_file, int files, int file_idx)
+void DataGen::gen(int threads_num, std::string out_file, int files, int file_idx)
 {
+    this->_games.resize(threads_num);
+
+    for (const auto &path: SYZYGY_PATHES)
+        if (Syzygy::instance().init(path))
+            break;
+
     this->_filename = out_file;
 
     this->_dg_max_size = DG_FILE_SIZE * files;
@@ -574,37 +571,43 @@ void DataGen::thread_gen(int thread_id, unsigned int seed)
     Randomizer rnd(seed);
     int game_count = 0;
 
-    std::vector<DGPos> positions;
-
     while (true)
     {
-        int resign = 0;
-        bool no_resign = rnd.random01() > 0.9f;
-
-        int move_start = 0;
         std::string uci_position = "startpos moves";
 
-        bool use_enemy = false;
-        int enemy_color = game_count % 2;
-
-        game_count++;
-
-        if (rnd.random01() > 0.05f)
+        if (rnd.random01() > 0.4f)
         {
             std::string fen = this->_book.get_fen();
             game.set_fen(fen);
             uci_position = "fen " + fen + " moves";
-            move_start = 4;
         }
         else
             game.set_startpos();
 
-        positions.clear();
+        int resign = 0;
+        bool no_resign = rnd.random01() > 0.9f;
+
+        _positions.clear();
+
+        int depths[2] = { 8, 8 };
+
+//        int depths[2] = { 8, 8 };
+//        if (rnd.random01() > 0.5f)
+//        {
+//            depths[0]++;
+//            depths[1]++;
+//        }
+//        if (rnd.random01() > 0.95f)
+//            depths[0]++;
+//        if (rnd.random01() > 0.95f)
+//            depths[1]++;
+
+        int enemy_color = game_count % 2;
+        game_count++;
 
 #ifdef USE_PSTREAMS
-        if (engine != nullptr && rnd.random01() > 0.9f)
+        if (engine != nullptr)
         {
-            use_enemy = true;
             engine->ucinewgame();
             engine->clear_hash();
             engine->isready();
@@ -618,7 +621,7 @@ void DataGen::thread_gen(int thread_id, unsigned int seed)
         i64 depth_avg = 0;
         i64 depth_cnt = 0;
         int move_num;
-        for (move_num = move_start; move_num < 500; ++move_num)
+        for (move_num = 0; move_num < 500; ++move_num)
         {
             if (move_num >= 0 && move_num < 4)
                 count = 7;
@@ -637,11 +640,15 @@ void DataGen::thread_gen(int thread_id, unsigned int seed)
                 break;
             }
 
-            int depth = 8;
-            i16 res = game.go_multi(depth, 2800, count, 128, true, &this->_lock3);
+            int depth = depths[move_num % 2];
+//            if (res_prev > 250)
+//                depth++;
 
-            if (prev_save && abs(res) < 700 && abs(res_prev) < 700 && abs(res + res_prev) > 300 && positions.size() > 2)
-                positions.pop_back();
+            i16 res = game.go_multi(depth, 3000, count, 96, true, &this->_lock3);
+//            i16 res = game.go_multi(depth, 3500, count, 96, true, &this->_lock3);
+
+            if (prev_save && abs(res) < 700 && abs(res_prev) < 700 && abs(res + res_prev) > 200 && _positions.size() > 2)
+                _positions.pop_back();
 
             res_prev = res;
             prev_save = false;
@@ -726,29 +733,29 @@ void DataGen::thread_gen(int thread_id, unsigned int seed)
                                 eval = -eval;
 
                             prev_save = true;
-                            positions.push_back({0,
-                                                 res,
-                                                 eval,
-                                                 static_cast<u8>(game._board.color(0)),
-                                                 game._board._bitboards[0][Board::KING],
-                                                 game._board._bitboards[1][Board::KING],
-                                                 game._board._bitboards[0][Board::PAWN],
-                                                 game._board._bitboards[1][Board::PAWN],
-                                                 game._board._bitboards[0][Board::KNIGHT],
-                                                 game._board._bitboards[1][Board::KNIGHT],
-                                                 game._board._bitboards[0][Board::BISHOP],
-                                                 game._board._bitboards[1][Board::BISHOP],
-                                                 game._board._bitboards[0][Board::ROOK],
-                                                 game._board._bitboards[1][Board::ROOK],
-                                                 game._board._bitboards[0][Board::QUEEN],
-                                                 game._board._bitboards[1][Board::QUEEN]});
+                            _positions.push_back({0,
+                                                  res,
+                                                  eval,
+                                                  static_cast<u8>(game._board.color(0)),
+                                                  game._board._bitboards[0][Board::KING],
+                                                  game._board._bitboards[1][Board::KING],
+                                                  game._board._bitboards[0][Board::PAWN],
+                                                  game._board._bitboards[1][Board::PAWN],
+                                                  game._board._bitboards[0][Board::KNIGHT],
+                                                  game._board._bitboards[1][Board::KNIGHT],
+                                                  game._board._bitboards[0][Board::BISHOP],
+                                                  game._board._bitboards[1][Board::BISHOP],
+                                                  game._board._bitboards[0][Board::ROOK],
+                                                  game._board._bitboards[1][Board::ROOK],
+                                                  game._board._bitboards[0][Board::QUEEN],
+                                                  game._board._bitboards[1][Board::QUEEN]});
                         }
                     }
                 }
             }
 
 #ifdef USE_PSTREAMS
-            if (use_enemy && engine != nullptr && move_num >= 16 && (move_num % 2) == enemy_color)
+            if (engine != nullptr && move_num >= 16 && (move_num % 2) == enemy_color)
             {
                 engine->position(uci_position);
                 std::string move_str = engine->go(this->_enemy_depth, this->_enemy_time, this->_enemy_nodes);
@@ -756,7 +763,7 @@ void DataGen::thread_gen(int thread_id, unsigned int seed)
                 if (enemy_move != 0)
                     move = enemy_move;
                 else
-                    std::cout << "!!! enemy move is not legal! " << move_str << std::endl;
+                    std::cout << "!!! enemy move is not legal!" << std::endl;
             }
 #endif
 
@@ -772,7 +779,7 @@ void DataGen::thread_gen(int thread_id, unsigned int seed)
             uci_position += " " + Move::get_string(move);
         }
 
-        if (depth_cnt == 0 || positions.size() == 0)
+        if (depth_cnt == 0 || _positions.size() == 0)
             continue;
 
         if (game_result == 0)
@@ -784,7 +791,7 @@ void DataGen::thread_gen(int thread_id, unsigned int seed)
         else if (game_result == 1)
         {
             // Skip some draws
-            if (rnd.random01() > 0.7f)
+            if (rnd.random01() > 0.6f)
                 continue;
             this->_res_draw++;
         }
@@ -799,7 +806,7 @@ void DataGen::thread_gen(int thread_id, unsigned int seed)
 
         this->_res_depth += 10 * depth_avg / depth_cnt;
 
-        for (auto &pos : positions)
+        for (auto &pos : _positions)
         {
             if (!this->add_pos(pos, game_result))
                 return;
@@ -1024,7 +1031,7 @@ bool DataGen::add_pos(DGPos &position, i16 game_res)
 
     int len = pos - DG_FILE_POS_LEN * num;
     if (len > DG_FILE_POS_LEN)
-        std::cout << "ALARM!! len: " << len << " pos: " << pos << " start: " << DG_FILE_POS_LEN * num << " idx: " << idx << " idx2: " << idx2 << " num: " << num << std::endl;
+        std::cout << "ALARM!! pos: " << pos << " start: " << DG_FILE_POS_LEN * num << " idx: " << idx << " idx2: " << idx2 << " num: " << num << std::endl;
 
     this->_dataset_in[idx2][DG_FILE_POS_LEN * num] = len;
 
@@ -1075,10 +1082,10 @@ BookGen::BookGen(int threads)
     this->_games.resize(threads);
 }
 
-void BookGen::gen(std::string filename, int hash1, int hash2, int book_depth, int depth, int eval_from, int eval_to)
+void BookGen::gen(std::string filename, int book_depth, int depth, int threshold)
 {
     this->_fens.clear();
-    this->_hash.resize(hash2);
+    this->_hash.resize(512*1024*1024);
 
     Board board;
     fens_for_book(0, book_depth, board);
@@ -1086,23 +1093,20 @@ void BookGen::gen(std::string filename, int hash1, int hash2, int book_depth, in
     std::cout << "Fens: " << this->_fens.size() << std::endl;
 
     TranspositionTable &table = TranspositionTable::instance();
-    table.init(hash1);
+    table.init(1536);
 
     std::vector<std::thread> threads;
     for (int i = 0; i < this->_games.size(); ++i)
-        threads.push_back(std::thread(&BookGen::thread, this, i, depth, eval_from, eval_to));
+        threads.push_back(std::thread(&BookGen::thread, this, i, depth, threshold));
 
     for (int i = 0; i < this->_games.size(); ++i)
         threads[i].join();
 
+
     std::cout << "Fens out: " << this->_fens_out.size() << std::endl;
-    std::ofstream file(filename, std::ios_base::out);
-    for (auto &fen : this->_fens_out)
-        file << fen << std::endl;
-    file.close();
 }
 
-void BookGen::thread(int thread_id, int depth, int eval_from, int eval_to)
+void BookGen::thread(int thread_id, int depth, int threshold)
 {
     auto &game = this->_games[thread_id];
     game._prune_pv_moves_count = false;
@@ -1112,7 +1116,7 @@ void BookGen::thread(int thread_id, int depth, int eval_from, int eval_to)
     {
         game.set_fen(fen);
         int res = game.go_multi(depth, 0, 1, 0);
-        if (res < eval_from || res > eval_to)
+        if (abs(res) > threshold)
             continue;
 
         this->_lock2.lock();
@@ -1141,11 +1145,10 @@ std::string BookGen::get_fen()
 
 void BookGen::fens_for_book(int ply, int depth, Board &board)
 {
-    if (this->_hash.check_hash(board.get_hash(ply)))
-        return;
     if (depth == 0)
     {
-        this->_fens.push_back(board.get_fen(ply));
+        if (!this->_hash.check_hash(board.get_hash(ply)))
+            this->_fens.push_back(board.get_fen(ply));
         return;
     }
     auto moves = board.moves_init(ply);

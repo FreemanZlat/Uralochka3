@@ -104,12 +104,11 @@ struct DGPos
 class DataGen
 {
 public:
-    DataGen();
-    void init(int threads_num, int hash1 = 4096, int hash2 = 4096, std::string book = "");
+    DataGen(int hash1 = 4096, int hash2 = 4096, std::string book = "");
 #ifdef USE_PSTREAMS
-    void set_enemy(std::string path_to_engine, int depth = 7, int time = 0, int nodes = 0, int hash = 32, bool use_syzygy = false);
+    void set_enemy(std::string path_to_engine, int depth = 7, int time = 0, int nodes = 0, int hash = 128, bool use_syzygy = false);
 #endif
-    void gen(std::string out_file, int files, int file_idx);
+    void gen(int threads_num, std::string out_file, int files, int file_idx);
     void thread_gen(int thread_id, unsigned int seed);
     void convert(int threads_num, std::string in_file, std::string out_file);
     void thread_eval(int thread_id, int size);
@@ -125,6 +124,7 @@ private:
     std::vector<UciEngine> _engines;
 #endif
     std::vector<DGPos> _positions;
+
 
     int _enemy_depth;
     int _enemy_time;
@@ -160,8 +160,8 @@ class BookGen
 public:
     BookGen(int threads);
 
-    void gen(std::string filename, int hash1, int hash2, int book_depth, int depth, int eval_from, int eval_to);
-    void thread(int thread_id, int depth, int eval_from, int eval_to);
+    void gen(std::string filename, int book_depth, int depth, int threshold);
+    void thread(int thread_id, int depth, int threshold);
     std::string get_fen();
     void fens_for_book(int ply, int depth, Board &board);
 

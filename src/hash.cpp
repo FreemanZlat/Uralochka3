@@ -188,7 +188,7 @@ TranspositionTable::TranspositionTable()
 {
     this->_enabled = false;
     this->_table_size = 0;
-    this->init(32);
+    this->init(128);
 }
 
 TranspositionTable::~TranspositionTable()

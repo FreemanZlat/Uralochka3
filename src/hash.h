@@ -3,6 +3,9 @@
 
 #include "common.h"
 
+#include <vector>
+#include <atomic>
+
 class Zorbist
 {
 public:

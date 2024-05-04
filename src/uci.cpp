@@ -5,38 +5,23 @@
 #include "hash.h"
 #include "syzygy.h"
 #include "neural.h"
-#ifdef IS_TUNING
-#include "tuning_params.h"
-#endif
 
 #include <iostream>
 #include <algorithm>
 
 // Спецификация протокола: http://wbec-ridderkerk.nl/html/UCIProtocol.html
 
-#ifdef USE_NN
-static const int EVAL_SCALE = 243;    // 243;
-#else
-static const int EVAL_SCALE = 100;
-#endif
+static const int EVAL_SCALE = 260;    // 260;
 
 //#define TESTING
 
 UCI::UCI()
 {
-    this->_is960 = false;
     this->set_threads(1);
 }
 
 void UCI::start(std::string version)
 {
-#ifdef IS_TUNING
-    TuningParams &params = TuningParams::instance();
-    for (const auto &param : params._params)
-        if (param.need_tuning)
-            std::cout << param.name << ", float, " << param.value << ", " << param.min << ", " << param.max << ", " << param.c_end << ", " << param.r_end << std::endl;
-#endif
-
     while(true)
     {
         // Читаем строку
@@ -47,23 +32,17 @@ void UCI::start(std::string version)
 
         // Парсим пришедшую строку. Первым словом идёт команда
         std::string cmd = UCI::substring(input);
-        std::transform(cmd.begin(), cmd.end(), cmd.begin(), ::tolower);
+        std::transform (cmd.begin(), cmd.end(), cmd.begin(), ::tolower);
         if (cmd == "uci")
         {
             // Отправляем инфу о движке
             std::cout << "id name " << version << std::endl;
             std::cout << "id author Ivan Maklyakov" << std::endl;
             std::cout << "option name Threads type spin default 1 min 1 max 512" << std::endl;
-            std::cout << "option name Hash type spin default 32 min 8 max 65536" << std::endl;
+            std::cout << "option name Hash type spin default 128 min 16 max 16384" << std::endl;
             std::cout << "option name Clear Hash type button" << std::endl;
             std::cout << "option name SyzygyPath type string default " << std::endl;
             std::cout << "option name SyzygyProbeDepth type spin default 0 min 0 max 63" << std::endl;
-            std::cout << "option name TimeMargin type spin default 200 min 0 max 1000" << std::endl;
-            // std::cout << "option name UCI_Chess960 type check default false" << std::endl;
-#ifdef IS_TUNING
-            for (const auto &param : params._params)
-                std::cout << "option name " << param.name << " type string default " << param.value << std::endl;
-#endif
             // Всю инфу передали
             std::cout << "uciok" << std::endl;
         }
@@ -107,32 +86,6 @@ void UCI::start(std::string version)
                 Syzygy &egtb = Syzygy::instance();
                 egtb.set_depth(std::stoi(UCI::substring(input)));
             }
-            else if (option == "TimeMargin")
-            {
-                UCI::substring(input);  // пропускаем слово value
-                int time_margin = std::stoi(UCI::substring(input));
-                for (auto &game : this->_games)
-                    game._time_margin = time_margin;
-            }
-/*
-            else if (option == "UCI_Chess960")
-            {
-                UCI::substring(input);  // пропускаем слово value
-                std::transform(input.begin(), input.end(), input.begin(), ::tolower);
-                this->_is960 = (input == "true");
-                for (auto &game : this->_games)
-                    game.set_960(this->_is960);
-            }
-*/
-#ifdef IS_TUNING
-            else
-            {
-                UCI::substring(input);  // пропускаем слово value
-                double value = std::stod(UCI::substring(input));
-                if (!params.set(option, value))
-                    std::cout << "info WARNING: no option: " << option << "!" << std::endl;
-            }
-#endif
         }
         else if (cmd == "ucinewgame")
         {
@@ -196,7 +149,7 @@ void UCI::start(std::string version)
         {
             // Если думали во время хода противника и он сделал предсказанный нами ход
         }
-        else if (cmd == "quit" || cmd == "exit")
+        else if (cmd == "quit")
         {
             if (this->_game_thread.joinable())
                 this->_game_thread.join();
@@ -260,7 +213,7 @@ void UCI::non_uci(std::string input)
                     this->set_fen(fen);
 
                 Rules rules;
-                rules._movetime = time * 1000 + this->_games[0]._time_margin;
+                rules._movetime = time * 1000 + 200;
 
                 Timer timer;
                 this->go(rules);
@@ -316,13 +269,12 @@ void UCI::non_uci(std::string input)
             std::cout << " enemy='" << enemy << "' enemy_depth=" << enemy_depth;
             std::cout << " enemy_time=" << enemy_time << " enemy_nodes=" << enemy_nodes << std::endl;
 
-            DataGen generator;
-            generator.init(threads, hash1, hash2, book);
+            DataGen generator(hash1, hash2, book);
 
             if (enemy != "")
                 generator.set_enemy(enemy, enemy_depth, enemy_time, enemy_nodes);
 
-            generator.gen("data/dg", files, file_idx);
+            generator.gen(threads, "data/dg", files, file_idx);
 
             std::cout << "done" << std::endl;
         }
@@ -341,48 +293,40 @@ void UCI::non_uci(std::string input)
 
             std::cout << "convert threads=" << threads << " in_file=" << in_file << " out_file=" << out_file << std::endl;
 
-            DataGen generator;
+            DataGen generator(16, 16);
             generator.convert(threads, in_file, out_file);
 
             std::cout << "done" << std::endl;
         }
 #endif
+/*
         else if (cmd == "book")
         {
             int threads = 1;
-            int hash1 = 4096;
-            int hash2 = 4096;
             int book_depth = 2;
             int depth = 10;
-            int eval_from = 0;
-            int eval_to = 50;
-            std::string filename = "book.epd";
+            int threshold = 50;
+            std::string filename = "";
 
             if (!input.empty())
                 threads = std::stoi(UCI::substring(input));
-            if (!input.empty())
-                hash1 = std::stoi(UCI::substring(input));
-            if (!input.empty())
-                hash2 = std::stoi(UCI::substring(input));
             if (!input.empty())
                 book_depth = std::stoi(UCI::substring(input));
             if (!input.empty())
                 depth = std::stoi(UCI::substring(input));
             if (!input.empty())
-                eval_from = std::stoi(UCI::substring(input));
-            if (!input.empty())
-                eval_to = std::stoi(UCI::substring(input));
+                threshold = std::stoi(UCI::substring(input));
             if (!input.empty())
                 filename = UCI::substring(input);
 
-            std::cout << "book threads=" << threads << " hash1=" << hash1 << " hash2=" << hash2 << " book_depth=" << book_depth << " eval_depth=" << depth;
-            std::cout << " eval_from=" << eval_from << " eval_to=" << eval_to << " filename='" << filename << "'" << std::endl;
+            std::cout << "book threads=" << threads << " book_depth=" << book_depth << " depth=" << depth << " threshold=" << threshold << " filename='" << filename << "'" << std::endl;
 
             BookGen generator(threads);
-            generator.gen(filename, hash1, hash2, book_depth, depth, 100*eval_from/EVAL_SCALE, 100*eval_to/EVAL_SCALE);
+            generator.gen(filename, book_depth, depth, threshold);
 
             std::cout << "done" << std::endl;
         }
+*/
         else if (cmd == "syz")
         {
             std::string path = UCI::substring(input);
@@ -471,8 +415,7 @@ void UCI::non_uci(std::string input)
             std::cout << "     <enemy_engine=''> <enemy_depth=7> <enemy_time=0> <enemy_nodes=0>                 - do dataset generation" << std::endl;
             std::cout << "- convert <threads=16> <in_file> <out_file>                                           - convert to new dataset format" << std::endl;
 #endif
-            std::cout << "- book <threads=16> <hash1=4096> <hash2=4096> <book_depth=6>" << std::endl;
-            std::cout << "       <eval_depth=10> <eval_from=0> <eval_to=50> <filename='book.epd'>               - do epd book generation" << std::endl;
+//            std::cout << "- book <threads=16> <book_depth=6> <depth=10> <threshold=50> <filename='book.epd'>    - do epd book generation" << std::endl;
             std::cout << "- syz <path=''>                                                                       - set syzygy path" << std::endl;
             std::cout << "- eval <fen=current>                                                                  - evaluate position" << std::endl;
             std::cout << "- nn <file=''>                                                                        - load nn from file" << std::endl;
@@ -563,10 +506,7 @@ void UCI::set_threads(int threads)
     this->_games.clear();
     this->_games.resize(threads);
     for (auto &game : this->_games)
-    {
         game.set_uci(this);
-        game.set_960(this->_is960);
-    }
     std::cout << "info string Threads count: " << threads << std::endl;
 }
 

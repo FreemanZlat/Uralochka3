@@ -176,10 +176,7 @@ std::string UciEngine::go(int depth, int time, int nodes, int wtime, int btime, 
                     if (word == "score")
                     {
                         word = UciEngine::substring(line);
-                        std::string val = UciEngine::substring(line);
-                        if (word == "" || val == "")
-                            break;
-                        this->_score = std::stoi(val);
+                        this->_score = std::stoi(UciEngine::substring(line));
                         if (word == "mate")
                         {
                             if (this->_score > 0)
@@ -187,6 +184,7 @@ std::string UciEngine::go(int depth, int time, int nodes, int wtime, int btime, 
                             else
                                 this->_score = -20000 - this->_score;
                         }
+//                        std::cout << "!! score: " << this->_score << std::endl;
                         break;
                     }
                 }

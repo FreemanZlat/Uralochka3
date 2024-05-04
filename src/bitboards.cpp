@@ -262,17 +262,6 @@ void Bitboards::init()
 
     for (int col = 0; col < 8; ++col)
         this->_isolated[col] = this->init_isolated(col);
-
-    for (int from = 0; from < 64; ++from)
-    {
-        u64 bits = 1ull << from;
-        for (int to = from; to < 64; ++to)
-        {
-            this->_bits_between[from][to] = bits;
-            this->_bits_between[to][from] = bits;
-            bits = bits | (bits << 1);
-        }
-    }
 }
 
 u64 Bitboards::moves_short(int square, const std::vector<int> &pieces_moves)

@@ -14,68 +14,33 @@ static const std::map<char, int> &MORPH_PIECES = { {'q', Board::QUEEN},
                                                    {'b', Board::BISHOP},
                                                    {'n', Board::KNIGHT} };
 
-int FUTILITY_PRUNING_HISTORY[] = { 0, 0 };
+static const int FUTILITY_PRUNING_HISTORY[] = { 12000, 6000 };
 
-int COUNTER_PRUNING_DEPTH[] = { 0, 0 };
-int COUNTER_PRUNING_HISTORY[] = { 0, 0 };
+static const int COUNTER_PRUNING_DEPTH[] = { 3, 2 };
+static const int COUNTER_PRUNING_HISTORY[] = { -1000, -2500 };
 
-double SEE_KILL = 0;
-double SEE_QUIET = 0;
-int SEE_DEPTH = 0;
+static const int SEE_KILL = -18;
+static const int SEE_QUIET = -70;
 
-double LMR_MOVES_0_0 = 0;
-double LMR_MOVES_0_1 = 0;
-double LMR_MOVES_1_0 = 0;
-double LMR_MOVES_1_1 = 0;
+static const double LMR_MOVES_0_0 = 2.0;
+static const double LMR_MOVES_0_1 = 2.5;
+static const double LMR_MOVES_1_0 = 4.0;
+static const double LMR_MOVES_1_1 = 4.0;
 
-double LMR_DEPTH_0 = 0;
-double LMR_DEPTH_1 = 0;
+static const double LMR_DEPTH_0 = 0.75;
+static const double LMR_DEPTH_1 = 2.25;
 
-int ASPIRATION_DELTA = 0;
-double ASPIRATION_DELTA_INC = 0;
-double ASPIRATION_ALPHA_SHIFT = 0;
-double ASPIRATION_BETA_SHIFT = 0;
+static const int TIME_MID = 50;
 
-int BETA_DEPTH = 0;
-double BETA_PRUNING = 0;
-double BETA_IMPROV_0 = 0;
-double BETA_IMPROV_1 = 0;
-double BETA_HASHHIT_0 = 0;
-double BETA_HASHHIT_1 = 0;
-double BETA_RETURN = 0;
-
-// int ALPHA_PRUNING = 0;
-
-double NULL_MIN = 0;
-double NULL_REDUCTION = 0;
-double NULL_DIV_1 = 0;
-double NULL_DIV_2 = 0;
-
-int PROBCUT_DEPTH = 0;
-int PROBCUT_BETA = 0;
-
-int IIR_PV_REDUCTION = 0;
-int IIR_CUT_DEPTH = 0;
-int IIR_CUT_REDUCTION = 0;
-
-int FUT_MARGIN_0 = 0;
-int FUT_MARGIN_1 = 0;
-int FUT_MARGIN_2 = 0;
-
-int SINGULAR_DEPTH_1 = 0;
-int SINGULAR_DEPTH_2 = 0;
-double SINGULAR_COEFF = 0;
-int SINGULAR_EXTS = 0;
-// int SINGULAR_BETA = 0;
-
-int HISTORY_REDUCTION = 0;
-
-int TIME_MID = 0;
-double TIME_MID_VAL = 0;
-double TIME_INC_COEF_MIN = 0;
-double TIME_INC_DIV_MIN = 0;
-double TIME_INC_COEF_MAX = 0;
-double TIME_INC_DIV_MAX = 0;
+static const int ASPIRATION_DELTA = 15;
+static const int BETA_PRUNING = 75;
+static const int ALPHA_PRUNING = 3000;
+static const int NULL_REDUCTION = 200;
+static const int PROBCUT_BETA = 120;
+static const int FUT_MARGIN_0 = 90;
+static const int FUT_MARGIN_1 = 60;
+static const int FUT_MARGIN_2 = 160;
+static const int HISTORY_REDUCTION = 5000;
 
 
 Rules::Rules():
@@ -96,7 +61,6 @@ Rules::Rules():
 Game::Game()
 {
     this->_depth_max = 64;
-    this->_time_margin = 200;
     this->_time_min = 0;
     this->_time_mid = 0;
     this->_time_max = 0;
@@ -112,17 +76,12 @@ Game::Game()
 
     this->_eval.init(&this->_board);
 
-    this->_prune_pv_moves_count = true;
-
-    this->lmr_init();
-}
-
-void Game::lmr_init()
-{
     for (int i = 0; i < 9; ++i)
     {
         this->lmr_moves[0][i] = static_cast<int>(LMR_MOVES_0_0 + LMR_MOVES_0_1 * i * i / 4.5);
         this->lmr_moves[1][i] = static_cast<int>(LMR_MOVES_1_0 + LMR_MOVES_1_1 * i * i / 4.5);
+//        this->lmr_moves[0][i] = (4 + i * i) / 2;
+//        this->lmr_moves[1][i] = 4 + i * i;
     }
     for (int i = 0; i < 64; ++i)
         for (int j = 0; j < 64; ++j)
@@ -132,16 +91,13 @@ void Game::lmr_init()
             else
                 this->lmr_depth[i][j] = static_cast<int>(LMR_DEPTH_0 + std::log(static_cast<double>(i)) * std::log(static_cast<double>(j)) / LMR_DEPTH_1);
         }
+
+    this->_prune_pv_moves_count = true;
 }
 
 void Game::set_uci(UCI *uci)
 {
     this->_uci = uci;
-}
-
-void Game::set_960(bool is960)
-{
-    this->_board._is960 = is960;
 }
 
 void Game::set_startpos()
@@ -319,21 +275,15 @@ void Game::go()
     // Засекаем таймер
     this->_timer.start();
 
-#ifdef IS_TUNING
-    this->lmr_init();
-#endif
-
     this->_best_depth = 0;
     this->_best_move = "y1z8";
+    this->_sel_depth = 0;
     this->_nodes = 0;
     this->_tbhits = 0;
     u16 best_move = 0;
     int res = this->_best_value;
     int prev_best = this->_best_value;
     int prev_move = 0;
-
-    this->_board._nodes[0]._extensions = 0;
-    this->_board._nodes[1]._extensions = 0;
 
 //    if (this->_time_min != 0 && this->_print_uci)
 //        std::cout << "info string time_min = " << this->_time_min / 1000.0 << "  time_max = " << this->_time_max / 1000.0 << std::endl;
@@ -343,7 +293,6 @@ void Game::go()
     // Постепенно перебираем всё глубже, начиная с глубины 1
     for (int i = depth_prev > 0 ? 4 : 1; i <= this->_depth_max; i += i < depth_prev ? 4 : 1)
     {
-        this->_sel_depth = 0;
         prev_move = best_move;
 
         // Синхронизируем глубину поиска с другими потоками
@@ -447,7 +396,7 @@ void Game::rules_parser(Rules &rules)
     this->_time_max = 0;
     if (rules._movetime > 0)
     {
-        this->_time_max = rules._movetime - this->_time_margin;
+        this->_time_max = rules._movetime - 200;
         if (this->_time_max < 1)
             this->_time_max  = 1;
         this->_time_min = this->_time_max;
@@ -467,29 +416,32 @@ void Game::rules_parser(Rules &rules)
 
     if (time > 0)
     {
-        int time_margin = std::max(1, time - this->_time_margin);
+        time -= 200;
+        if (time < 1)
+            time = 1;
 
         if (rules._movestogo == 0)
         {
-            this->_time_min = std::round((TIME_INC_COEF_MIN*time_inc + time - this->_time_margin) / TIME_INC_DIV_MIN);
-            this->_time_max = std::round((TIME_INC_COEF_MAX*time_inc + time - this->_time_margin) / TIME_INC_DIV_MAX);
+            this->_time_min = -200 + (time + time_inc*25) / 50;
+            this->_time_max = -200 + (time + time_inc*25) / 8;
         }
         else
         {
-            // Нужно тюнить или пофиг? =)
             this->_time_min = (time + time_inc*rules._movestogo) * 2 / ((rules._movestogo + 1) * 3);
             this->_time_max = 9 * this->_time_min / 4;
         }
 
-        this->_time_min = std::max(1, this->_time_min);
-        this->_time_min = std::min(time_margin, this->_time_min);
+        if (this->_time_min < 1)
+            this->_time_min = 1;
+        if (this->_time_min > time)
+            this->_time_min = time;
 
-        this->_time_max = std::max(1, this->_time_max);
-        this->_time_max = std::min(time_margin, this->_time_max);
+        if (this->_time_max < 1)
+            this->_time_max = 1;
+        if (this->_time_max > time)
+            this->_time_max = time;
 
-        this->_time_mid = std::round((1.0 - TIME_MID_VAL) * this->_time_min + TIME_MID_VAL * this->_time_max);
-        this->_time_mid = std::max(1, this->_time_mid);
-        this->_time_mid = std::min(time_margin, this->_time_mid);
+        this->_time_mid = (this->_time_min + this->_time_max) / 2;
     }
 }
 
@@ -531,7 +483,7 @@ int Game::search_aspiration(int depth, int previous_result, u16 &best_move)
         {
             if (this->_print_uci)
                 this->_uci->info(depth, this->_sel_depth, this->_timer.get(), res, UCI::UPPERBOUND, this->_board._nodes[0].get_pv());
-            beta = std::round((1.0 - ASPIRATION_BETA_SHIFT) * alpha + ASPIRATION_BETA_SHIFT * beta);
+            beta = (alpha + beta) / 2;
             alpha = alpha - delta;
             if (alpha < -20000)
                 alpha = -20000;
@@ -543,14 +495,13 @@ int Game::search_aspiration(int depth, int previous_result, u16 &best_move)
             this->set_bestmove(depth, best_move, res);
             if (this->_print_uci)
                 this->_uci->info(depth, this->_sel_depth, this->_timer.get(), res, UCI::LOWERBOUND, this->_board._nodes[0].get_pv());
-            alpha = std::round(ASPIRATION_ALPHA_SHIFT * alpha + (1.0 - ASPIRATION_ALPHA_SHIFT) * beta);
             beta = beta + delta;
             if (beta > 20000)
                 beta = 20000;
         }
 
         // Увеличиваем размер окна
-        delta = ASPIRATION_DELTA_INC * delta;
+        delta = delta + 2 * delta / 3;
     }
 
     return res;
@@ -805,18 +756,16 @@ int Game::search(int depth, int ply, int alpha, int beta, u16 &best_move, int sk
     if (!is_pv_node && !is_check)
     {
         // Razoring
-        // if (depth <= 1 && eval + 150 < alpha)
-        //     return this->quiescence(ply, alpha, beta);
+//        if (depth <= 1 && eval + 150 < alpha)
+//            return this->quiescence(ply, alpha, beta);
 
         // Бета-отсечения
-        if (depth <= BETA_DEPTH && eval - std::round(BETA_PRUNING*depth -
-                                                     (improving ? BETA_IMPROV_1 : BETA_IMPROV_0) -
-                                                     (hash_hit ? BETA_HASHHIT_1 : BETA_HASHHIT_0)) >= beta)
-            return std::round((1.0 - BETA_RETURN) * eval + BETA_RETURN * beta);
+        if (depth <= 8 && eval - BETA_PRUNING*(depth - improving) >= beta)
+            return eval;
 
         // Альфа-отсечения
-        // if (depth <= 5 && eval + ALPHA_PRUNING <= alpha)
-        //     return eval;
+        if (depth <= 5 && eval + 3000 <= alpha)
+            return eval;
 
         // Нулевой ход
         bool can_null = this->_board._nodes[ply-1]._move != 0 && (ply < 2 || this->_board._nodes[ply-2]._move != 0);
@@ -825,7 +774,10 @@ int Game::search(int depth, int ply, int alpha, int beta, u16 &best_move, int sk
             this->_board.is_figures(this->_board.color(ply)))
         {
             // Редукция
-            int reduction = std::round(std::min(NULL_MIN, (eval - beta) / NULL_DIV_1) + NULL_REDUCTION + depth / NULL_DIV_2);
+            int reduction = (eval - beta) / NULL_REDUCTION;
+            if (reduction > 3)
+                reduction = 3;
+            reduction += 4 + depth / 6;
 
             this->_board.nullmove_do(ply);
             int res = -search(depth - reduction, ply+1, -beta, -beta+1, best_move, 0, !cut_node);
@@ -836,9 +788,9 @@ int Game::search(int depth, int ply, int alpha, int beta, u16 &best_move, int sk
         }
 
         // ProbCut
-        if (skip_move == 0 && depth >= (PROBCUT_DEPTH+1) && abs(beta) < 19000)
+        int probcut_beta = beta + PROBCUT_BETA;
+        if (skip_move == 0 && depth >= 5 && abs(beta) < 19000)
         {
-            const int probcut_beta = beta + PROBCUT_BETA;
             auto moves = this->_board.moves_init(ply, true);
             moves->update_hash(hash_move);
             u16 move = 0;
@@ -849,7 +801,7 @@ int Game::search(int depth, int ply, int alpha, int beta, u16 &best_move, int sk
 
                 int res = -quiescence(ply+1, -probcut_beta, -probcut_beta+1);
                 if (res >= probcut_beta)
-                    res = -search(depth-PROBCUT_DEPTH, ply+1, -probcut_beta, -probcut_beta+1, best_move, 0, !cut_node);
+                    res = -search(depth-4, ply+1, -probcut_beta, -probcut_beta+1, best_move, 0, !cut_node);
 
                 this->_board.move_undo(move, ply);
 
@@ -880,24 +832,18 @@ int Game::search(int depth, int ply, int alpha, int beta, u16 &best_move, int sk
         }
     }
 */
-    // IIR как в СФ
+    // IIR
     if (!(skip_move || is_check))
-    {
-        if (hash_move == 0 && is_pv_node)
-            depth -= IIR_PV_REDUCTION;
-        if (depth < 0)
-            return this->quiescence(ply, alpha, beta);
-        if (depth >= IIR_CUT_DEPTH && hash_move == 0 && cut_node)
-            depth -= IIR_CUT_REDUCTION;
-    }
+        if (depth >= 4 && hash_move == 0 && (is_pv_node || cut_node))
+            depth--;
 
     // Генерим ходы
     auto moves = this->_board.moves_init(ply);
     moves->update_hash(hash_move);
 
     int seeMargin[2];
-    seeMargin[0] = std::round(SEE_KILL * depth * depth);
-    seeMargin[1] = std::round(SEE_QUIET * depth);
+    seeMargin[0] = SEE_KILL * depth * depth;
+    seeMargin[1] = SEE_QUIET * depth;
 
     u64 output_nodes = 0;
 
@@ -969,7 +915,7 @@ int Game::search(int depth, int ply, int alpha, int beta, u16 &best_move, int sk
             }
 
             // Отсечение по SEE
-            if (depth <= SEE_DEPTH && !is_check)
+            if (depth <= 9 && !is_check)
                 if (moves->SEE(move) < seeMargin[is_quiet ? 1 : 0])
                     continue;
         }
@@ -980,46 +926,36 @@ int Game::search(int depth, int ply, int alpha, int beta, u16 &best_move, int sk
             moves_quiets++;
         }
 
-        this->_board._nodes[ply+1]._extensions = this->_board._nodes[ply]._extensions;
         int extension = 0;
         // Сингулярное продление
-        if (depth >= SINGULAR_DEPTH_1 &&
+        if (depth >= 8 &&
             skip_move == 0 &&
             hash_move == move &&
             ply != 0 &&
             node._value > -19000 && node._value < 19000 &&
             node._age_type == TTNode::BETA &&
-            node._depth >= depth - SINGULAR_DEPTH_2)
+            node._depth >= depth - 3)
         {
-            int beta_cut = node._value - depth;
-            int res = search(std::round(SINGULAR_COEFF * (depth-1)), ply, beta_cut - 1, beta_cut, best_move, move, cut_node);
+            int beta_cut = node._value - 2*depth;
+            int res = search(depth / 2 - 1, ply, beta_cut - 1, beta_cut, best_move, move, cut_node);
 
             if (res < beta_cut)
-            {
                 extension = 1;
-                if (!is_pv_node && this->_board._nodes[ply]._extensions <= SINGULAR_EXTS)
-                {
-                    this->_board._nodes[ply+1]._extensions++;
-                    extension++;
-                    // if (is_quiet && res < beta_cut - SINGULAR_BETA)
-                    //     extension++;
-                }
-            }
             else if (beta_cut >= beta)
             {
                 this->_board.moves_free();
                 return beta_cut;
             }
-           else if (node._value >= beta)
-                extension = (is_pv_node ? 1 : 0) - 2;
-           else if (cut_node)
-               extension = -2;
-           else if (node._value <= res)
-               extension = -1;
+//            else if (node._value >= beta)
+//                extension = -2;
+//            else if (cut_node)
+//                extension = -1;
+//            else if (node._value <= res)
+//                extension = -1;
         }
         // Если шах - увеличиваем глубину перебора
         if (is_check || pawn_morph != 0)
-            extension++;
+            extension = 1;
 
         int search_depth = depth + extension;
 
@@ -1119,7 +1055,7 @@ int Game::search(int depth, int ply, int alpha, int beta, u16 &best_move, int sk
         hash_type = TTNode::BETA;
         if (is_quiet)
         {
-            // Апдейтим киллеры
+            // Апдейтим киллеры. Надо бы проверить, показалось, что замедляет поиск
             moves->update_killers(move);
             // Апдейтим историю
             moves->update_history(depth, this->_board.color(ply));
@@ -1239,14 +1175,6 @@ int Game::quiescence(int ply, int alpha, int beta)
     TTNode::Type hash_type = TTNode::ALPHA;
     while ((move = moves->get_next()) != 0)
     {
-/*
-        if (!is_check)
-        {
-            const auto pawn_morph = (move >> 12) & 7;
-            if (pawn_morph == 0 && moves->SEE(move) + eval + 200 < alpha)
-                continue;
-        }
-*/
         if (!this->_board.move_do(move, ply))
             continue;
 
