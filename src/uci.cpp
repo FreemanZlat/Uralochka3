@@ -15,7 +15,7 @@
 // Спецификация протокола: http://wbec-ridderkerk.nl/html/UCIProtocol.html
 
 #ifdef USE_NN
-static const int EVAL_SCALE = 260;    // 260;
+static const int EVAL_SCALE = 243;    // 243;
 #else
 static const int EVAL_SCALE = 100;
 #endif
@@ -58,6 +58,7 @@ void UCI::start(std::string version)
             std::cout << "option name Clear Hash type button" << std::endl;
             std::cout << "option name SyzygyPath type string default " << std::endl;
             std::cout << "option name SyzygyProbeDepth type spin default 0 min 0 max 63" << std::endl;
+            std::cout << "option name TimeMargin type spin default 200 min 0 max 1000" << std::endl;
             // std::cout << "option name UCI_Chess960 type check default false" << std::endl;
 #ifdef IS_TUNING
             for (const auto &param : params._params)
@@ -105,6 +106,13 @@ void UCI::start(std::string version)
                 UCI::substring(input);  // пропускаем слово value
                 Syzygy &egtb = Syzygy::instance();
                 egtb.set_depth(std::stoi(UCI::substring(input)));
+            }
+            else if (option == "TimeMargin")
+            {
+                UCI::substring(input);  // пропускаем слово value
+                int time_margin = std::stoi(UCI::substring(input));
+                for (auto &game : this->_games)
+                    game._time_margin = time_margin;
             }
 /*
             else if (option == "UCI_Chess960")
@@ -252,7 +260,7 @@ void UCI::non_uci(std::string input)
                     this->set_fen(fen);
 
                 Rules rules;
-                rules._movetime = time * 1000 + 50;
+                rules._movetime = time * 1000 + this->_games[0]._time_margin;
 
                 Timer timer;
                 this->go(rules);

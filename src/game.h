@@ -68,6 +68,7 @@ private:
     // Таймер
     Timer _timer;
     // Время на ход
+    int _time_margin;
     int _time_min;
     int _time_mid;
     int _time_max;

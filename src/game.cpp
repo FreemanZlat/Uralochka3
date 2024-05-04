@@ -70,8 +70,6 @@ int SINGULAR_EXTS = 0;
 
 int HISTORY_REDUCTION = 0;
 
-static const int TIME_MARGIN = 50;
-
 int TIME_MID = 0;
 double TIME_MID_VAL = 0;
 double TIME_INC_COEF_MIN = 0;
@@ -98,6 +96,7 @@ Rules::Rules():
 Game::Game()
 {
     this->_depth_max = 64;
+    this->_time_margin = 200;
     this->_time_min = 0;
     this->_time_mid = 0;
     this->_time_max = 0;
@@ -448,7 +447,7 @@ void Game::rules_parser(Rules &rules)
     this->_time_max = 0;
     if (rules._movetime > 0)
     {
-        this->_time_max = rules._movetime - TIME_MARGIN;
+        this->_time_max = rules._movetime - this->_time_margin;
         if (this->_time_max < 1)
             this->_time_max  = 1;
         this->_time_min = this->_time_max;
@@ -468,12 +467,12 @@ void Game::rules_parser(Rules &rules)
 
     if (time > 0)
     {
-        int time_margin = std::max(1, time - TIME_MARGIN);
+        int time_margin = std::max(1, time - this->_time_margin);
 
         if (rules._movestogo == 0)
         {
-            this->_time_min = -TIME_MARGIN + std::round((TIME_INC_COEF_MIN*time_inc + time) / TIME_INC_DIV_MIN);
-            this->_time_max = -TIME_MARGIN + std::round((TIME_INC_COEF_MAX*time_inc + time) / TIME_INC_DIV_MAX);
+            this->_time_min = std::round((TIME_INC_COEF_MIN*time_inc + time - this->_time_margin) / TIME_INC_DIV_MIN);
+            this->_time_max = std::round((TIME_INC_COEF_MAX*time_inc + time - this->_time_margin) / TIME_INC_DIV_MAX);
         }
         else
         {
