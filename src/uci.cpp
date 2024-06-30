@@ -648,8 +648,8 @@ void UCI::go(Rules rules, bool print_uci)
     int best = 0;
     for (int i = 1; i < this->_games.size(); ++i)
     {
-        int best_depth = this->_games[0]._best_depth;
-        int best_score = this->_games[0]._best_value;
+        int best_depth = this->_games[best]._best_depth;
+        int best_score = this->_games[best]._best_value;
 
         int this_depth = this->_games[i]._best_depth;
         int this_score = this->_games[i]._best_value;
