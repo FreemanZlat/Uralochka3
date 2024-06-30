@@ -11,7 +11,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # avx512 -  cannonlake
 set(ARCH "native" CACHE STRING "Architecture to tell gcc to optimize for (-march)")
 set(USE_NN ON CACHE BOOL "Use NNUE-like neural network")
-set(NN_FILE "nn_1.3gb_e480_l388_d500.nn" CACHE STRING "NN file :-)")
+set(NN_FILE "nn_1.4b_e480_l388_d500.nn" CACHE STRING "NN file :-)")
 set(USE_PEXT OFF CACHE BOOL "Use PEXT")
 set(USE_POPCNT OFF CACHE BOOL "Use POPCNT")
 set(USE_CNPY OFF CACHE BOOL "Use CNPY for datagen output")
