@@ -529,6 +529,8 @@ int Game::search_aspiration(int depth, int previous_result, u16 &best_move)
         // Если меньше окна
         if (res <= alpha)
         {
+            best_move = move_best;
+            this->set_bestmove(depth, best_move, res);
             if (this->_print_uci)
                 this->_uci->info(depth, this->_sel_depth, this->_timer.get(), res, UCI::UPPERBOUND, this->_board._nodes[0].get_pv());
             beta = std::round((1.0 - ASPIRATION_BETA_SHIFT) * alpha + ASPIRATION_BETA_SHIFT * beta);
@@ -540,7 +542,7 @@ int Game::search_aspiration(int depth, int previous_result, u16 &best_move)
         else if (res >= beta)
         {
             best_move = move_best;
-            // this->set_bestmove(depth, best_move, res);
+            this->set_bestmove(depth, best_move, res);
             if (this->_print_uci)
                 this->_uci->info(depth, this->_sel_depth, this->_timer.get(), res, UCI::LOWERBOUND, this->_board._nodes[0].get_pv());
             alpha = std::round(ASPIRATION_ALPHA_SHIFT * alpha + (1.0 - ASPIRATION_ALPHA_SHIFT) * beta);
