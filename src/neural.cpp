@@ -201,18 +201,28 @@ Neural::~Neural()
 {
 }
 
-void Neural::accum_init(int stack_pointer)
+void Neural::accum_init(int stack_pointer, bool do_w, bool do_b)
 {
     Model &model = Model::instance();
-    memcpy(this->_stack[stack_pointer]._layer1, model._l1bias_avx, L1_OUT_SIZE_P2 * sizeof(i16));
+    if (do_w && do_b)
+        memcpy(this->_stack[stack_pointer]._layer1, model._l1bias_avx, L1_OUT_SIZE_P2 * sizeof(i16));
+    else if (do_w)
+        memcpy(this->_stack[stack_pointer]._layer1, model._l1bias_avx, L1_OUT_SIZE_P * sizeof(i16));
+    else if (do_b)
+        memcpy(&this->_stack[stack_pointer]._layer1[L1_OUT_SIZE_P], &model._l1bias_avx[L1_OUT_SIZE_P], L1_OUT_SIZE_P * sizeof(i16));
 }
 
-void Neural::accum_copy(int from, int to)
+void Neural::accum_copy(int from, int to, bool do_w, bool do_b)
 {
-    memcpy(this->_stack[to]._layer1, this->_stack[from]._layer1, L1_OUT_SIZE_P2 * sizeof(i16));
+    if (do_w && do_b)
+        memcpy(this->_stack[to]._layer1, this->_stack[from]._layer1, L1_OUT_SIZE_P2 * sizeof(i16));
+    else if (do_w)
+        memcpy(this->_stack[to]._layer1, this->_stack[from]._layer1, L1_OUT_SIZE_P * sizeof(i16));
+    else if (do_b)
+        memcpy(&this->_stack[to]._layer1[L1_OUT_SIZE_P], &this->_stack[from]._layer1[L1_OUT_SIZE_P], L1_OUT_SIZE_P * sizeof(i16));
 }
 
-void Neural::accum_piece_add(int stack_pointer, int wk, int bk, int color, int piece, int sq)
+void Neural::accum_piece_add(int stack_pointer, int wk, int bk, int color, int piece, int sq, bool do_w, bool do_b)
 {
     int wk_side = ((wk & 7) > 3) ? 7 : 0;
     int bk_side = ((bk & 7) > 3) ? 7 : 0;
@@ -232,24 +242,28 @@ void Neural::accum_piece_add(int stack_pointer, int wk, int bk, int color, int p
     const auto l1data = (avx_register_type_16*) (model._l1data_avx);
     const auto sum = (avx_register_type_16*) (this->_stack[stack_pointer]._layer1);
 
-    for (int i = 0; i < L1_OUT_SIZE_P/COUNT_16_BIT; ++i)
-        sum[i] = avx_add_epi16(sum[i], l1data[w_pos+i]);
-    for (int i = 0; i < L1_OUT_SIZE_P/COUNT_16_BIT; ++i)
-        sum[i + L1_OUT_SIZE_P/COUNT_16_BIT] = avx_add_epi16(sum[i + L1_OUT_SIZE_P/COUNT_16_BIT], l1data[b_pos+i]);
+    if (do_w)
+        for (int i = 0; i < L1_OUT_SIZE_P/COUNT_16_BIT; ++i)
+            sum[i] = avx_add_epi16(sum[i], l1data[w_pos+i]);
+    if (do_b)
+        for (int i = 0; i < L1_OUT_SIZE_P/COUNT_16_BIT; ++i)
+            sum[i + L1_OUT_SIZE_P/COUNT_16_BIT] = avx_add_epi16(sum[i + L1_OUT_SIZE_P/COUNT_16_BIT], l1data[b_pos+i]);
 #else
     w_pos *= L1_OUT_SIZE_P;
     b_pos *= L1_OUT_SIZE_P;
 
-    for (int i = 0; i < L1_OUT_SIZE_P; i += UNROLL)
-        for (int j = 0; j < UNROLL; ++j)
-            this->_stack[stack_pointer]._layer1[i + j] += model._l1data_avx[w_pos + i + j];
-    for (int i = 0; i < L1_OUT_SIZE_P; i += UNROLL)
-        for (int j = 0; j < UNROLL; ++j)
-            this->_stack[stack_pointer]._layer1[i + j + L1_OUT_SIZE_P] += model._l1data_avx[b_pos + i + j];
+    if (do_w)
+        for (int i = 0; i < L1_OUT_SIZE_P; i += UNROLL)
+            for (int j = 0; j < UNROLL; ++j)
+                this->_stack[stack_pointer]._layer1[i + j] += model._l1data_avx[w_pos + i + j];
+    if (do_b)
+        for (int i = 0; i < L1_OUT_SIZE_P; i += UNROLL)
+            for (int j = 0; j < UNROLL; ++j)
+                this->_stack[stack_pointer]._layer1[i + j + L1_OUT_SIZE_P] += model._l1data_avx[b_pos + i + j];
 #endif
 }
 
-void Neural::accum_piece_remove(int stack_pointer, int wk, int bk, int color, int piece, int sq)
+void Neural::accum_piece_remove(int stack_pointer, int wk, int bk, int color, int piece, int sq, bool do_w, bool do_b)
 {
     int wk_side = ((wk & 7) > 3) ? 7 : 0;
     int bk_side = ((bk & 7) > 3) ? 7 : 0;
@@ -269,63 +283,67 @@ void Neural::accum_piece_remove(int stack_pointer, int wk, int bk, int color, in
     const auto l1data = (avx_register_type_16*) (model._l1data_avx);
     const auto sum = (avx_register_type_16*) (this->_stack[stack_pointer]._layer1);
 
-    for (int i = 0; i < L1_OUT_SIZE_P/COUNT_16_BIT; ++i)
-        sum[i] = avx_sub_epi16(sum[i], l1data[w_pos+i]);
-    for (int i = 0; i < L1_OUT_SIZE_P/COUNT_16_BIT; ++i)
-        sum[i + L1_OUT_SIZE_P/COUNT_16_BIT] = avx_sub_epi16(sum[i + L1_OUT_SIZE_P/COUNT_16_BIT], l1data[b_pos+i]);
+    if (do_w)
+        for (int i = 0; i < L1_OUT_SIZE_P/COUNT_16_BIT; ++i)
+            sum[i] = avx_sub_epi16(sum[i], l1data[w_pos+i]);
+    if (do_b)
+        for (int i = 0; i < L1_OUT_SIZE_P/COUNT_16_BIT; ++i)
+            sum[i + L1_OUT_SIZE_P/COUNT_16_BIT] = avx_sub_epi16(sum[i + L1_OUT_SIZE_P/COUNT_16_BIT], l1data[b_pos+i]);
 #else
     w_pos *= L1_OUT_SIZE_P;
     b_pos *= L1_OUT_SIZE_P;
 
-    for (int i = 0; i < L1_OUT_SIZE_P; i += UNROLL)
-        for (int j = 0; j < UNROLL; ++j)
-            this->_stack[stack_pointer]._layer1[i + j] -= model._l1data_avx[w_pos + i + j];
-    for (int i = 0; i < L1_OUT_SIZE_P; i += UNROLL)
-        for (int j = 0; j < UNROLL; ++j)
-            this->_stack[stack_pointer]._layer1[i + j + L1_OUT_SIZE_P] -= model._l1data_avx[b_pos + i + j];
+    if (do_w)
+        for (int i = 0; i < L1_OUT_SIZE_P; i += UNROLL)
+            for (int j = 0; j < UNROLL; ++j)
+                this->_stack[stack_pointer]._layer1[i + j] -= model._l1data_avx[w_pos + i + j];
+    if (do_b)
+        for (int i = 0; i < L1_OUT_SIZE_P; i += UNROLL)
+            for (int j = 0; j < UNROLL; ++j)
+                this->_stack[stack_pointer]._layer1[i + j + L1_OUT_SIZE_P] -= model._l1data_avx[b_pos + i + j];
 #endif
 }
 
-void Neural::accum_all_pieces(int stack_pointer, u64 wk, u64 bk, u64 wp, u64 bp, u64 wn, u64 bn, u64 wb, u64 bb, u64 wr, u64 br, u64 wq, u64 bq)
+void Neural::accum_all_pieces(int stack_pointer, u64 wk, u64 bk, u64 wp, u64 bp, u64 wn, u64 bn, u64 wb, u64 bb, u64 wr, u64 br, u64 wq, u64 bq, bool do_w, bool do_b)
 {
-    accum_init(stack_pointer);
+    accum_init(stack_pointer, do_w, do_b);
 
     int wk_pos = Bitboards::lsb(wk);
     int bk_pos = Bitboards::lsb(bk);
 
     // PAWNS
     while (wp != 0)
-        accum_piece_add(stack_pointer, wk_pos, bk_pos, 0, 6, Bitboards::poplsb(wp));
+        accum_piece_add(stack_pointer, wk_pos, bk_pos, 0, 6, Bitboards::poplsb(wp), do_w, do_b);
     while (bp != 0)
-        accum_piece_add(stack_pointer, wk_pos, bk_pos, 1, 6, Bitboards::poplsb(bp));
+        accum_piece_add(stack_pointer, wk_pos, bk_pos, 1, 6, Bitboards::poplsb(bp), do_w, do_b);
 
     // KNIGHTS
     while (wn != 0)
-        accum_piece_add(stack_pointer, wk_pos, bk_pos, 0, 5, Bitboards::poplsb(wn));
+        accum_piece_add(stack_pointer, wk_pos, bk_pos, 0, 5, Bitboards::poplsb(wn), do_w, do_b);
     while (bn != 0)
-        accum_piece_add(stack_pointer, wk_pos, bk_pos, 1, 5, Bitboards::poplsb(bn));
+        accum_piece_add(stack_pointer, wk_pos, bk_pos, 1, 5, Bitboards::poplsb(bn), do_w, do_b);
 
     // BISHOPS
     while (wb != 0)
-        accum_piece_add(stack_pointer, wk_pos, bk_pos, 0, 4, Bitboards::poplsb(wb));
+        accum_piece_add(stack_pointer, wk_pos, bk_pos, 0, 4, Bitboards::poplsb(wb), do_w, do_b);
     while (bb != 0)
-        accum_piece_add(stack_pointer, wk_pos, bk_pos, 1, 4, Bitboards::poplsb(bb));
+        accum_piece_add(stack_pointer, wk_pos, bk_pos, 1, 4, Bitboards::poplsb(bb), do_w, do_b);
 
     // ROOKS
     while (wr != 0)
-        accum_piece_add(stack_pointer, wk_pos, bk_pos, 0, 3, Bitboards::poplsb(wr));
+        accum_piece_add(stack_pointer, wk_pos, bk_pos, 0, 3, Bitboards::poplsb(wr), do_w, do_b);
     while (br != 0)
-        accum_piece_add(stack_pointer, wk_pos, bk_pos, 1, 3, Bitboards::poplsb(br));
+        accum_piece_add(stack_pointer, wk_pos, bk_pos, 1, 3, Bitboards::poplsb(br), do_w, do_b);
 
     // QUEENS
     while (wq != 0)
-        accum_piece_add(stack_pointer, wk_pos, bk_pos, 0, 2, Bitboards::poplsb(wq));
+        accum_piece_add(stack_pointer, wk_pos, bk_pos, 0, 2, Bitboards::poplsb(wq), do_w, do_b);
     while (bq != 0)
-        accum_piece_add(stack_pointer, wk_pos, bk_pos, 1, 2, Bitboards::poplsb(bq));
+        accum_piece_add(stack_pointer, wk_pos, bk_pos, 1, 2, Bitboards::poplsb(bq), do_w, do_b);
 
     // KINGS
-    accum_piece_add(stack_pointer, wk_pos, bk_pos, 0, 1, wk_pos);
-    accum_piece_add(stack_pointer, wk_pos, bk_pos, 1, 1, bk_pos);
+    accum_piece_add(stack_pointer, wk_pos, bk_pos, 0, 1, wk_pos, do_w, do_b);
+    accum_piece_add(stack_pointer, wk_pos, bk_pos, 1, 1, bk_pos, do_w, do_b);
 }
 
 int Neural::accum_predict(int stack_pointer, int color, int stage)
@@ -341,7 +359,6 @@ int Neural::accum_predict(int stack_pointer, int color, int stage)
     avx_register_type_32 sum {};
     avx_register_type_16 relu_max = avx_set1_epi16(0);
     avx_register_type_16 relu_min = avx_set1_epi16(QUANTIZATION_COEFF_L1);
-
 
     if (color)
     {
@@ -433,7 +450,7 @@ int Neural::accum_predict(int stack_pointer, int color, int stage)
 
 int Neural::predict_i(int color, u64 wk, u64 bk, u64 wp, u64 bp, u64 wn, u64 bn, u64 wb, u64 bb, u64 wr, u64 br, u64 wq, u64 bq)
 {
-    this->accum_all_pieces(0, wk, bk, wp, bp, wn, bn, wb, bb, wr, br, wq, bq);
+    this->accum_all_pieces(0, wk, bk, wp, bp, wn, bn, wb, bb, wr, br, wq, bq, true, true);
     int stg = Neural::stage(Bitboards::bits_count(wk | bk | wp | bp | wn | bn | wb | bb | wr | br | wq | bq), (wq | bq) != 0);
     return accum_predict(0, color, stg);
 }

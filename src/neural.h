@@ -65,11 +65,11 @@ public:
     Neural();
     ~Neural();
 
-    void accum_init(int stack_pointer);
-    void accum_copy(int from, int to);
-    void accum_piece_add(int stack_pointer, int wk, int bk, int color, int piece, int sq);
-    void accum_piece_remove(int stack_pointer, int wk, int bk, int color, int piece, int sq);
-    void accum_all_pieces(int stack_pointer, u64 wk, u64 bk, u64 wp, u64 bp, u64 wn, u64 bn, u64 wb, u64 bb, u64 wr, u64 br, u64 wq, u64 bq);
+    void accum_init(int stack_pointer, bool do_w, bool do_b);
+    void accum_copy(int from, int to, bool do_w, bool do_b);
+    void accum_piece_add(int stack_pointer, int wk, int bk, int color, int piece, int sq, bool do_w, bool do_b);
+    void accum_piece_remove(int stack_pointer, int wk, int bk, int color, int piece, int sq, bool do_w, bool do_b);
+    void accum_all_pieces(int stack_pointer, u64 wk, u64 bk, u64 wp, u64 bp, u64 wn, u64 bn, u64 wb, u64 bb, u64 wr, u64 br, u64 wq, u64 bq, bool do_w, bool do_b);
     int accum_predict(int stack_pointer, int color, int stage);
 
     int predict_i(int color, u64 wk, u64 bk, u64 wp, u64 bp, u64 wn, u64 bn, u64 wb, u64 bb, u64 wr, u64 br, u64 wq, u64 bq);

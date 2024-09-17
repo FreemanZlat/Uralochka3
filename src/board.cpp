@@ -135,7 +135,7 @@ void Board::set_fen(const std::string &fen)
             this->_bking = sq;
 
         int piece = PIECES.at(c);
-        this->piece_add(-1, piece & Board::WHITE_MASK ? 0 : 1, piece, sq, false);
+        this->piece_add(-1, piece & Board::WHITE_MASK ? 0 : 1, piece, sq, false, false);
     }
 
     // Стартовые позиции ладей (нужно для рокировок)
@@ -181,24 +181,33 @@ void Board::set_fen(const std::string &fen)
             break;
         else if (c == 'K')
         {
+            if (this->_wking != 4 || !Bitboards::bit_test(this->_bitboards[0][Board::ROOK], 7))
+                continue;
             this->_nodes[0]._flags |= FLAG_WHITE_00;
             this->_nodes[0]._hash ^= zorb._white_00;
         }
         else if (c == 'Q')
         {
+            if (this->_wking != 4 || !Bitboards::bit_test(this->_bitboards[0][Board::ROOK], 0))
+                continue;
             this->_nodes[0]._flags |= FLAG_WHITE_000;
             this->_nodes[0]._hash ^= zorb._white_000;
         }
         else if (c == 'k')
         {
+            if (this->_bking != 60 || !Bitboards::bit_test(this->_bitboards[1][Board::ROOK], 63))
+                continue;
             this->_nodes[0]._flags |= FLAG_BLACK_00;
             this->_nodes[0]._hash ^= zorb._black_00;
         }
         else if (c == 'q')
         {
+            if (this->_bking != 60 || !Bitboards::bit_test(this->_bitboards[1][Board::ROOK], 56))
+                continue;
             this->_nodes[0]._flags |= FLAG_BLACK_000;
             this->_nodes[0]._hash ^= zorb._black_000;
         }
+/*
         else if (c >= 'A' && c <= 'H')
         {
             this->_is960 = true;
@@ -227,6 +236,7 @@ void Board::set_fen(const std::string &fen)
                 this->_nodes[0]._hash ^= zorb._black_000;
             }
         }
+*/
     }
 
     // Взятие на проходе (битое поле)
@@ -267,7 +277,8 @@ void Board::set_fen(const std::string &fen)
                                    this->_bitboards[0][Board::ROOK],
                                    this->_bitboards[1][Board::ROOK],
                                    this->_bitboards[0][Board::QUEEN],
-                                   this->_bitboards[1][Board::QUEEN]);
+                                   this->_bitboards[1][Board::QUEEN],
+                                   true, true);
     this->_wking_area = Neural::king_area(this->_wking, 0);
     this->_bking_area = Neural::king_area(this->_bking, 1);
 #endif
@@ -394,7 +405,8 @@ bool Board::move_do(u16 move, int ply, bool same_ply)
     this->_nodes[ply+1]._hash = this->_nodes[ply]._hash;
 
     bool king_move = (piece & Board::PIECES_MASK) == Board::KING;
-    bool nn_update = true;
+    bool nn_update_w = true;
+    bool nn_update_b = true;
 
     this->_stack_pointer++;
 #ifdef USE_NN
@@ -405,26 +417,25 @@ bool Board::move_do(u16 move, int ply, bool same_ply)
         if (color == 0 && this->_wking_area != new_king_area)
         {
             this->_wking_area = new_king_area;
-            nn_update = false;
+            nn_update_w = false;
         }
         if (color != 0 && this->_bking_area != new_king_area)
         {
             this->_bking_area = new_king_area;
-            nn_update = false;
+            nn_update_b = false;
         }
     }
-    if (nn_update)
-        this->_neural.accum_copy(this->_stack_pointer-1, this->_stack_pointer);
+    this->_neural.accum_copy(this->_stack_pointer-1, this->_stack_pointer, nn_update_w, nn_update_b);
 #endif
 
     // Убираем взятого
     if (killed != 0 && en_passant == FLAG_EN_PASSANT_MASK)
-        this->piece_remove(ply, 1-color, killed, to, nn_update);
+        this->piece_remove(ply, 1-color, killed, to, nn_update_w, nn_update_b);
 
     // Двигаем фигуру на доске
-    this->piece_remove(ply, color, piece, from, nn_update);
+    this->piece_remove(ply, color, piece, from, nn_update_w, nn_update_b);
     if (pawn_morph == 0)
-        this->piece_add(ply, color, piece, to, nn_update);
+        this->piece_add(ply, color, piece, to, nn_update_w, nn_update_b);
 
     // Сбрасываем флаг взятия на проходе
     if ((this->_nodes[ply+1]._flags & FLAG_EN_PASSANT_MASK) != FLAG_EN_PASSANT_MASK)
@@ -505,15 +516,15 @@ bool Board::move_do(u16 move, int ply, bool same_ply)
         if (to - from == 2)
         {
             int rook = this->_board[to + 1];
-            this->piece_remove(ply, color, rook, to + 1, nn_update);
-            this->piece_add(ply, color, rook, to - 1, nn_update);
+            this->piece_remove(ply, color, rook, to + 1, nn_update_w, nn_update_b);
+            this->piece_add(ply, color, rook, to - 1, nn_update_w, nn_update_b);
         }
         // 000
         if (to - from == -2)
         {
             int rook = this->_board[to - 2];
-            this->piece_remove(ply, color, rook, to - 2, nn_update);
-            this->piece_add(ply, color, rook, to + 1, nn_update);
+            this->piece_remove(ply, color, rook, to - 2, nn_update_w, nn_update_b);
+            this->piece_add(ply, color, rook, to + 1, nn_update_w, nn_update_b);
         }
     }
 
@@ -564,7 +575,7 @@ bool Board::move_do(u16 move, int ply, bool same_ply)
     if ((piece & Board::PIECES_MASK) == Board::PAWN)
     {
         if (pawn_morph)
-            this->piece_add(ply, color, pawn_morph, to, true);
+            this->piece_add(ply, color, pawn_morph, to, true, true);
 
         if (to - from == 16)
         {
@@ -582,7 +593,7 @@ bool Board::move_do(u16 move, int ply, bool same_ply)
         }
 
         if (en_passant != FLAG_EN_PASSANT_MASK && killed != 0)
-            this->piece_remove(ply, 1-color, killed, en_passant, true);
+            this->piece_remove(ply, 1-color, killed, en_passant, true, true);
     }
 
     this->_nodes[ply]._move = move;
@@ -603,7 +614,7 @@ bool Board::move_do(u16 move, int ply, bool same_ply)
     }
 
 #ifdef USE_NN
-    if (!nn_update)
+    if (!nn_update_w || !nn_update_b)
         this->_neural.accum_all_pieces(this->_stack_pointer,
                                        this->_bitboards[0][Board::KING],
                                        this->_bitboards[1][Board::KING],
@@ -616,7 +627,8 @@ bool Board::move_do(u16 move, int ply, bool same_ply)
                                        this->_bitboards[0][Board::ROOK],
                                        this->_bitboards[1][Board::ROOK],
                                        this->_bitboards[0][Board::QUEEN],
-                                       this->_bitboards[1][Board::QUEEN]);
+                                       this->_bitboards[1][Board::QUEEN],
+                                       !nn_update_w, !nn_update_b);
 #endif
 
     // Меняем цвет
@@ -632,7 +644,7 @@ bool Board::move_do(u16 move, int ply, bool same_ply)
         this->_nodes[ply]._hash = this->_nodes[ply+1]._hash;
         this->_stack_pointer--;
 #ifdef USE_NN
-        this->_neural.accum_copy(this->_stack_pointer+1, this->_stack_pointer);
+        this->_neural.accum_copy(this->_stack_pointer+1, this->_stack_pointer, true, true);
 #endif
     }
 
@@ -847,7 +859,7 @@ bool Board::is_figures(int color)
             this->_bitboards[color][Board::ROOK] != 0 || this->_bitboards[color][Board::QUEEN] != 0;
 }
 
-void Board::piece_remove(int ply, int color, int piece, int square, bool nn)
+void Board::piece_remove(int ply, int color, int piece, int square, bool nn_w, bool nn_b)
 {
     Zorbist &zorb = Zorbist::instance();
     Bitboards::bit_clear(this->_bitboards[color][piece & Board::PIECES_MASK], square);
@@ -855,12 +867,12 @@ void Board::piece_remove(int ply, int color, int piece, int square, bool nn)
     this->_nodes[ply+1]._hash ^= zorb._pieces[piece][square];
     this->_board[square] = 0;
 #ifdef USE_NN
-    if (nn)
-        this->_neural.accum_piece_remove(this->_stack_pointer, this->_wking, this->_bking, color, piece & Board::PIECES_MASK, square);
+    if (nn_w || nn_b)
+        this->_neural.accum_piece_remove(this->_stack_pointer, this->_wking, this->_bking, color, piece & Board::PIECES_MASK, square, nn_w, nn_b);
 #endif
 }
 
-void Board::piece_add(int ply, int color, int piece, int square, bool nn)
+void Board::piece_add(int ply, int color, int piece, int square, bool nn_w, bool nn_b)
 {
     Zorbist &zorb = Zorbist::instance();
     Bitboards::bit_set(this->_bitboards[color][piece & Board::PIECES_MASK], square);
@@ -868,7 +880,7 @@ void Board::piece_add(int ply, int color, int piece, int square, bool nn)
     this->_nodes[ply+1]._hash ^= zorb._pieces[piece][square];
     this->_board[square] = piece;
 #ifdef USE_NN
-    if (nn)
-        this->_neural.accum_piece_add(this->_stack_pointer, this->_wking, this->_bking, color, piece & Board::PIECES_MASK, square);
+    if (nn_w || nn_b)
+        this->_neural.accum_piece_add(this->_stack_pointer, this->_wking, this->_bking, color, piece & Board::PIECES_MASK, square, nn_w, nn_b);
 #endif
 }

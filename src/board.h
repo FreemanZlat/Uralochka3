@@ -109,8 +109,8 @@ public:
     };
 
 private:
-    void piece_remove(int ply, int color, int piece, int square, bool nn);
-    void piece_add(int ply, int color, int piece, int square, bool nn);
+    void piece_remove(int ply, int color, int piece, int square, bool nn_w, bool nn_b);
+    void piece_add(int ply, int color, int piece, int square, bool nn_w, bool nn_b);
 
     bool _is960;
 
