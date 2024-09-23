@@ -168,29 +168,31 @@ u16 Moves::get_next(bool skip_quiets)
     switch (this->_stage)
     {
     case STAGE_HASH:
-        if (!this->_generated)
-        {
-            this->_generated = true;
-            this->gen_kills();
-            this->gen_quiet();
-        }
         this->_stage = STAGE_GEN_KILLS;
-        if (this->_hash_move != 0)
+        if (this->_hash != 0)
         {
-            return this->_hash_move;
-//            if (this->is_legal(this->_hash_move))
-//                return this->_hash_move;
-//            else
-//                this->_hash_move = 0;
+            if (!this->_kills_generated)
+            {
+                this->_kills_generated = true;
+                this->gen_kills();
+            }
+            if (!this->_quiet_generated)
+            {
+                this->_quiet_generated = true;
+                this->gen_quiet();
+            }
+
+            this->_hash = 0;
+            if (this->_hash_move != 0)
+                return this->_hash_move;
         }
 
     case STAGE_GEN_KILLS:
-        if (!this->_generated)
+        if (!this->_kills_generated)
         {
-            this->_generated = true;
+            this->_kills_generated = true;
             this->gen_kills();
-        }
-//        this->gen_kills();
+        }        
         this->_stage = STAGE_GOOD_KILLS;
 
     case STAGE_GOOD_KILLS:
@@ -214,6 +216,14 @@ u16 Moves::get_next(bool skip_quiets)
         }
         if (this->_kills)
             return 0;
+        this->_stage = STAGE_GEN_QUIET;
+
+    case STAGE_GEN_QUIET:
+        if (!this->_quiet_generated)
+        {
+            this->_quiet_generated = true;
+            this->gen_quiet();
+        }
         this->_stage = STAGE_KILLER1;
 
     case STAGE_KILLER1:
@@ -227,13 +237,9 @@ u16 Moves::get_next(bool skip_quiets)
             return this->_killer2_move;
 
     case STAGE_COUNTER:
-        this->_stage = STAGE_GEN_QUIET;
+        this->_stage = STAGE_QUIET;
         if (this->_counter_move != 0/* && this->is_legal(this->_counter_move)*/)
             return this->_counter_move;
-
-    case STAGE_GEN_QUIET:
-//        this->gen_quiet();
-        this->_stage = STAGE_QUIET;
 
     case STAGE_QUIET:
         if (!skip_quiets && this->_moves_quiet.size() > 0)
@@ -343,7 +349,8 @@ int Moves::see(int to, int color, int score, int target, u64 all)
 
 void Moves::clear()
 {
-    this->_generated = false;
+    this->_kills_generated = false;
+    this->_quiet_generated = false;
     this->_stage = STAGE_HASH;
     this->_moves_kills.clear();
     this->_moves_quiet.clear();

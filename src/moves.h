@@ -51,10 +51,10 @@ public:
         STAGE_HASH = 0,
         STAGE_GEN_KILLS,
         STAGE_GOOD_KILLS,
+        STAGE_GEN_QUIET,
         STAGE_KILLER1,
         STAGE_KILLER2,
         STAGE_COUNTER,
-        STAGE_GEN_QUIET,
         STAGE_QUIET,
         STAGE_BAD_KILLS,
         STAGE_END
@@ -88,7 +88,8 @@ private:
     std::vector<Move> _moves_quiet;
     Board *_board;
     History *_history;
-    bool _generated;
+    bool _kills_generated;
+    bool _quiet_generated;
     bool _kills;
     int _ply;
     u16 _hash;
