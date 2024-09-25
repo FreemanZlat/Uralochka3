@@ -83,7 +83,7 @@ void Moves::init_generator(bool kills, int ply, u16 move_counter, int piece_coun
     this->clear();
     this->_ply = ply;
     this->_kills = kills;
-    this->_stage = kills ? STAGE_GEN_KILLS : STAGE_HASH;
+    this->_stage = STAGE_HASH;
     this->_move_counter = move_counter;
     this->_piece_counter = piece_counter;
     this->_move_follower = move_follower;
@@ -171,18 +171,22 @@ u16 Moves::get_next(bool skip_quiets)
         this->_stage = STAGE_GEN_KILLS;
         if (this->_hash != 0)
         {
-            if (!this->_kills_generated)
+            if ((this->_hash & Move::KILLED) == 0 && ((this->_hash >> 12) & 7) == 0)
+            {
+                if (!this->_kills)
+                {
+                    this->_quiet_generated = true;
+                    this->gen_quiet();
+                }
+            }
+            else
             {
                 this->_kills_generated = true;
                 this->gen_kills();
             }
-            if (!this->_quiet_generated)
-            {
-                this->_quiet_generated = true;
-                this->gen_quiet();
-            }
 
             this->_hash = 0;
+
             if (this->_hash_move != 0)
                 return this->_hash_move;
         }

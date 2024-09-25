@@ -844,6 +844,8 @@ int Game::search(int depth, int ply, int alpha, int beta, u16 &best_move, int sk
             u16 move = 0;
             while ((move = moves->get_next()) != 0)
             {
+                if (move == hash_move)
+                    continue;
                 if (!this->_board.move_do(move, ply))
                     continue;
 
@@ -1171,7 +1173,7 @@ int Game::quiescence(int ply, int alpha, int beta)
     TTNode node;
     bool hash_hit = table.load(hash, node);
 
-    u16 hash_move = 0;
+    // u16 hash_move = 0;
     if (hash_hit)
     {
         // Отсечение значением из хэш-таблицы
@@ -1186,7 +1188,7 @@ int Game::quiescence(int ply, int alpha, int beta)
         }
 
         // Ход из хэш-таблицы
-//        hash_move = node._move;
+        // hash_move = node._move;
     }
 
     bool is_check = this->_board.is_check(ply);
@@ -1231,7 +1233,7 @@ int Game::quiescence(int ply, int alpha, int beta)
     auto moves = this->_board.moves_init(ply, !is_check);
 
     // Что-то с этим не то. Что не помню :(
-//    moves->update_hash(hash_move);
+    // moves->update_hash(hash_move);
 
     // Просматриваем все ходы
     u16 move = 0;
