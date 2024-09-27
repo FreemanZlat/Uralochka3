@@ -326,7 +326,7 @@ void UCI::non_uci(std::string input)
 
             std::cout << "done" << std::endl;
         }
-        else if (cmd == "convert")
+        else if (cmd == "reeval")
         {
             int threads = 16;
             std::string in_file = "dg_0.npy";
@@ -339,10 +339,35 @@ void UCI::non_uci(std::string input)
             if (!input.empty())
                 out_file = UCI::substring(input);
 
-            std::cout << "convert threads=" << threads << " in_file=" << in_file << " out_file=" << out_file << std::endl;
+            std::cout << "reeval threads=" << threads << " in_file=" << in_file << " out_file=" << out_file << std::endl;
 
             DataGen generator;
-            generator.convert(threads, in_file, out_file);
+            generator.reeval(threads, in_file, out_file);
+
+            std::cout << "done" << std::endl;
+        }
+        else if (cmd == "plain")
+        {
+            std::string filename = "plains.txt";
+            int threads = 16;
+            int file_idx = 0;
+            int hash = 4096;
+
+            if (!input.empty())
+                filename = UCI::substring(input);
+            if (!input.empty())
+                threads = std::stoi(UCI::substring(input));
+            if (!input.empty())
+                file_idx = std::stoi(UCI::substring(input));
+            if (!input.empty())
+                hash = std::stoi(UCI::substring(input));
+
+            std::cout << "plain filename=" << filename << " threads=" << threads;
+            std::cout << " file_idx=" << file_idx << " hash=" << hash << std::endl;
+
+            DataGen generator;
+            generator.init(threads, 0, hash);
+            generator.plain(filename, "data/lc0", file_idx);
 
             std::cout << "done" << std::endl;
         }
@@ -469,7 +494,7 @@ void UCI::non_uci(std::string input)
 #ifdef USE_CNPY
             std::cout << "- dg <threads=16> <files=1> <start_idx=0> <hash1=4096> <hash2=4096> <epd_book=''>" << std::endl;
             std::cout << "     <enemy_engine=''> <enemy_depth=7> <enemy_time=0> <enemy_nodes=0>                 - do dataset generation" << std::endl;
-            std::cout << "- convert <threads=16> <in_file> <out_file>                                           - convert to new dataset format" << std::endl;
+            std::cout << "- reeval <threads=16> <in_file> <out_file>                                            - reeval dataset" << std::endl;
 #endif
             std::cout << "- book <threads=16> <hash1=4096> <hash2=4096> <book_depth=6>" << std::endl;
             std::cout << "       <eval_depth=10> <eval_from=0> <eval_to=50> <filename='book.epd'>               - do epd book generation" << std::endl;
@@ -544,18 +569,18 @@ void UCI::info(int time)
 
 void UCI::sync(int time)
 {
-    if (this->_games[0]._time_max != 0)
+    if (this->_games[0]._time_max == 0)
+        return;
+
+    int max_depth = 0;
+    for (auto &game : this->_games)
     {
-        int max_depth = 0;
-        for (auto &game : this->_games)
-        {
-            int best_depth = game._best_depth;
-            if (best_depth > max_depth)
-                max_depth = best_depth;
-        }
-        for (auto &game : this->_games)
-            game._depth_best = max_depth;
+        int best_depth = game._best_depth;
+        if (best_depth > max_depth)
+            max_depth = best_depth;
     }
+    for (auto &game : this->_games)
+        game._depth_best = max_depth;
 }
 
 void UCI::set_threads(int threads)

@@ -5,7 +5,6 @@
 
 #include <algorithm>
 #include <fstream>
-#include <sstream>
 #include <iostream>
 #include <cmath>
 #include <cstdlib>
@@ -13,355 +12,11 @@
 #include <ctime>
 #include <thread>
 #include <random>
+#include <chrono>
 
 #ifdef USE_CNPY
 #include <cnpy.h>
 #endif
-
-static const double TEXEL_K = 1.13;
-static const double IS_GG = 150.0;
-static const double MOVES_GG = 50.0;
-static const int PER_THREAD = 2000;
-
-static const std::vector<std::vector<int>> &DELTAS = {
-    { -2, -1, 1, 2 },
-    { -1, 1 },
-    { -4, -2, -1, 2 },
-    { -2, 1, 2, 4 }
-};
-
-// Tuner
-
-Tuner::Tuner(int threads)
-{
-    this->_games.clear();
-    this->_games.resize(threads);
-}
-
-void Tuner::load(std::string filename, Type type, int max_size)
-{
-    this->_timer.start();
-
-    EvalParams &params = EvalParams::instance();
-
-    std::ifstream file(filename);
-
-    std::string fen;
-    this->_size = 0;
-    while (std::getline(file, fen))
-    {
-        std::string line;
-        std::getline(file, line);
-
-        int moves;
-        double res;
-        int is_book = 0;
-        double eval = 0;
-
-        std::istringstream values(line);
-        values >> moves >> res >> is_book >> eval;      // В fens6 нет is_book и eval
-
-        if (type == Tuner::TUNE && moves > 100)
-            continue;
-
-        this->_games[0].set_fen(fen);
-
-        if (type == Tuner::NEURAL)
-        {
-/*
-            u64 wk = this->_games[0]._board._bitboards[0][Board::KING];
-            u64 bk = this->_games[0]._board._bitboards[1][Board::KING];
-            u64 wp = this->_games[0]._board._bitboards[0][Board::PAWN];
-            u64 bp = this->_games[0]._board._bitboards[1][Board::PAWN];
-            u64 wn = this->_games[0]._board._bitboards[0][Board::KNIGHT];
-            u64 bn = this->_games[0]._board._bitboards[1][Board::KNIGHT];
-            u64 wb = this->_games[0]._board._bitboards[0][Board::BISHOP];
-            u64 bb = this->_games[0]._board._bitboards[1][Board::BISHOP];
-            u64 wr = this->_games[0]._board._bitboards[0][Board::ROOK];
-            u64 br = this->_games[0]._board._bitboards[1][Board::ROOK];
-            u64 wq = this->_games[0]._board._bitboards[0][Board::QUEEN];
-            u64 bq = this->_games[0]._board._bitboards[1][Board::QUEEN];
-            this->_neural.add_node(wk, bk, wp, bp, wn, bn, wb, bb, wr, br, wq, bq, Neural::sigmoid(eval/150));
-*/
-        }
-        else
-        {
-            if (is_book && type == Tuner::TUNE)
-                continue;
-
-            if (type == Tuner::TUNE)
-            {
-                int eval1 = this->_games[0].eval();
-                int eval2 = this->_games[0].quiescence_tune(0, -20000, 20000);
-                if (abs(eval1-eval2) > 50)
-                    continue;
-            }
-
-            this->_fens.push_back(fen);
-            this->_cnt_moves.push_back(moves);
-            this->_results.push_back(res);
-            this->_books.push_back(is_book);
-        }
-
-        if ((++this->_size % 100000) == 0)
-            std::cout << "Loading: " << this->_size << std::endl;
-
-        if (this->_size == max_size)
-            break;
-    }
-
-    file.close();
-
-    std::cout << "Loaded: " << this->_size << " (" << this->_timer.get() / 1000 << " seconds)" << std::endl;
-}
-
-double Tuner::eval()
-{
-    this->_threads_res = 0.0;
-    this->_threads_current = 0;
-
-    std::vector<std::thread> threads;
-    for (int i = 0; i < this->_games.size(); ++i)
-        threads.push_back(std::thread(&Tuner::eval_thread, this, i));
-
-    for (int i = 0; i < this->_games.size(); ++i)
-        threads[i].join();
-
-    this->_threads_res /= static_cast<double>(this->_size);
-    return this->_threads_res;
-}
-
-void Tuner::eval_thread(int thread_id)
-{
-    double res = 0.0;
-    int start, size;
-    while (this->eval_get(start, size, res))
-    {
-        res = 0.0;
-        for (int i = 0; i < size; ++i)
-        {
-            this->_games[thread_id].set_fen(this->_fens[start+i]);
-
-//            double eval = this->_game.quiescence_tune(0, -20000, 20000);
-            double eval = this->_games[thread_id].eval();
-
-            if (this->_games[thread_id]._board.color(0))
-                eval = -eval;
-
-            double r = this->_results[start+i] - 1.0 / (1.0 + pow(10.0, -this->_texel_k * eval / 400.0));
-//            double r = this->_results[start+i] - 1.0 / (1.0 + exp(-eval/IS_GG));
-
-            res += r*r;
-//            res += r*r*exp(-this->_cnt_moves[start+i]/MOVES_GG);
-        }
-    }
-}
-
-bool Tuner::eval_get(int &start, int &size, double res, bool print)
-{
-    bool result = false;
-
-    this->_lock1.lock();
-
-    this->_threads_res += res;
-
-    start = this->_threads_current;
-    if (this->_threads_current < this->_size)
-    {
-        size = std::min(PER_THREAD, (int)this->_size - this->_threads_current);
-        this->_threads_current += size;
-        result = true;
-    }
-
-    if (print)
-        std::cout << start << "/" << this->_size << " :  " << 100.0f * start / this->_size << "%" << std::endl;
-
-    this->_lock1.unlock();
-
-    return result;
-}
-
-void Tuner::compute_k()
-{
-    std::cout << "Computing K..." << std::endl;
-
-    double start = -10.0, end = 10.1, step = 1.0;
-    double best_eval = 100500.0;
-
-    for (int i = 0; i < 5; ++i)
-    {
-        double current = start;
-
-        while (current < end)
-        {
-            this->_texel_k = current;
-            double eval = this->eval();
-            if (eval < best_eval)
-            {
-                best_eval = eval;
-                start = current;
-            }
-            current += step;
-        }
-
-        std::cout << i << ". best=" << best_eval << " k=" << start << std::endl;
-
-        end = start + step;
-        start -= step;
-        step /= 10.0;
-    }
-
-    this->_texel_k = start;
-}
-
-void Tuner::start(std::string in, std::string out)
-{
-    EvalParams &params = EvalParams::instance();
-    params.load(in);
-
-    this->_texel_k = TEXEL_K;
-//    this->compute_k();
-
-    double eval = this->eval();
-    std::cout << "start eval: " << eval << std::endl;
-
-    int improved = 1;
-    int iter = 0;
-
-    while (improved > 0)
-    {
-        this->_timer.start();
-
-        this->save(out, iter, eval);
-
-        iter++;
-        improved = 0;
-
-        params.start();
-
-        int *val = nullptr;
-        int count = 0;
-        std::cout << iter << "." << count << " ";
-        while ((val = params.get_next()) != nullptr)    // or get_next_mat
-        {
-            int current_val = *val;
-            int best_val = current_val;
-            int best = 0;
-
-            if (iter == 1)
-                this->_params.push_back({ 0, 0, 0 });
-
-            int deltas_idx = this->_params[count][2];
-
-            if (this->_params[count][0] == 0 && this->_params[count][1] > 2 && (this->_params[count][1] % 3) < 2)
-            {
-                this->_params[count][1]++;
-                std::cout << "= " << best_val << " (skip)  : " << eval << std::endl;
-                std::cout << iter << "." << ++count << " ";
-                continue;
-            }
-
-            for (int delta : DELTAS[deltas_idx])
-            {
-                *val = current_val + delta;
-                params.init_pst();
-
-                double new_eval = this->eval();
-                if (new_eval < eval)
-                {
-                    eval = new_eval;
-                    best_val = *val;
-                    best = delta;
-                }
-            }
-
-            if (best != 0)
-                improved++;
-
-            if (this->_params[count][0] == best)
-                this->_params[count][1]++;
-            else
-            {
-                this->_params[count][0] = best;
-                this->_params[count][1] = 1;
-            }
-
-            if (best == 0)
-                this->_params[count][2] = 1; // -1 1
-            else if (best == -1 || best == 1)
-                this->_params[count][2] = 0; // -2 -1 1 2
-            else if (best == -2)
-                this->_params[count][2] = 2; // -4 -2 -1 2
-            else if (best == 2)
-                this->_params[count][2] = 3; // -2 1 2 4
-
-            *val = best_val;
-            std::cout << "= " << best_val << " (" << (best>0 ? "+" : "") << best << ")  : " << eval << std::endl;
-            std::cout << iter << "." << ++count << " ";
-        }
-
-        int seconds = static_cast<int>(this->_timer.get() / 1000);
-        int minutes = seconds / 60;
-        seconds = seconds % 60;
-
-        std::cout << iter << ". Improved parameters: " << improved << ", Time: " << minutes << ":" << (seconds < 10 ? "0" : "") << seconds << std::endl;
-    }
-}
-
-void Tuner::eval_dataset(std::string out_file)
-{
-    this->_threads_current = 0;
-    this->_evals.resize(this->_size);
-
-    TranspositionTable &table = TranspositionTable::instance();
-    table.init(1024);
-
-    std::vector<std::thread> threads;
-    for (int i = 0; i < this->_games.size(); ++i)
-        threads.push_back(std::thread(&Tuner::dataset_thread, this, i));
-
-    for (int i = 0; i < this->_games.size(); ++i)
-        threads[i].join();
-
-    std::ofstream file(out_file);
-    for (int i = 0; i < this->_size; ++i)
-    {
-        file << this->_fens[i] << std::endl;
-        file << this->_cnt_moves[i] << " " << this->_results[i] << " " << this->_books[i] << " " << this->_evals[i] << std::endl;
-    }
-    file.close();
-}
-
-void Tuner::dataset_thread(int thread_id)
-{
-    int start, size;
-    while (this->eval_get(start, size, 0.0, true))
-    {
-        for (int i = 0; i < size; ++i)
-        {
-            int idx = start + size - 1 - i;
-            this->_games[thread_id].set_fen(this->_fens[idx]);
-
-            u16 best_move = 0;
-            int eval = this->_games[thread_id].search_root(11, best_move);
-
-            if (this->_games[thread_id]._board.color(0))
-                eval = -eval;
-
-            this->_evals[idx] = eval;
-        }
-    }
-}
-
-void Tuner::save(std::string out, int iter, double eval)
-{
-    EvalParams &params = EvalParams::instance();
-    params.save(out + "." + std::to_string(iter));
-
-    std::ofstream file("tuner.txt", std::ios_base::app);
-    file << iter << ", " << eval << std::endl;
-    file.close();
-}
 
 // HashTable
 
@@ -456,6 +111,118 @@ std::string EPDBook::get_fen()
     return res;
 }
 
+// SFPlainLoader
+
+SFPlainLoader::SFPlainLoader()
+{
+    this->_files.clear();
+    this->_file_num = 0;
+    this->_nodes.clear();
+    this->_node_num = 0;
+    this->_need_load = false;
+}
+
+SFPlainLoader::~SFPlainLoader()
+{
+    this->_thread.join();
+}
+
+void SFPlainLoader::load(std::string filename)
+{
+    std::ifstream file(filename);
+    std::string line;
+    this->_files.clear();
+    while (std::getline(file, line))
+        if (!line.empty())
+            this->_files.push_back("plains/"+line);
+    file.close();
+
+    this->_file_num = 0;
+    this->_nodes.clear();
+    this->_node_num = 0;
+
+    this->_thread = std::thread(&SFPlainLoader::thread_loader, this);
+}
+
+bool SFPlainLoader::get_node(PlainNode &node)
+{
+    std::lock_guard<std::mutex> lock(this->_lock);
+
+    if (this->_node_num >= this->_nodes.size())
+        if (!this->load_next())
+            return false;
+
+    node = this->_nodes[this->_node_num++];
+
+    return true;
+}
+
+bool SFPlainLoader::load_next()
+{
+    if (this->_file_num >= this->_files.size())
+        return false;
+
+    {
+        std::unique_lock<std::mutex> lock(this->_lock_load);
+        this->_need_load = true;
+    }
+
+    this->_cv.notify_one();
+
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+
+    std::unique_lock<std::mutex> lock(this->_lock_load);
+
+    return true;
+}
+
+void SFPlainLoader::thread_loader()
+{
+    std::unique_lock<std::mutex> lock(this->_lock_load);
+
+    while (this->_file_num < this->_files.size())
+    {
+        while (!this->_need_load)
+            this->_cv.wait(lock);
+        this->_need_load = false;
+
+        this->_nodes.clear();
+        this->_node_num = 0;
+
+        PlainNode node = {"", "", 0, 0, 0};
+
+        auto filename = this->_files[this->_file_num++];
+        std::cout << "Loading file '" << filename << "' (" << this->_file_num << "/" << this->_files.size() << ") ... ";
+
+        std::ifstream file(filename);
+        std::string line;
+        while (std::getline(file, line))
+        {
+            if (line.empty())
+                continue;
+
+            std::string word = UCI::substring(line);
+            if (word == "fen")
+                node.fen = line;
+            else if (word == "move")
+                node.move = line;
+            else if (word == "score")
+                node.score = std::stoi(line);
+            else if (word == "ply")
+                node.ply = std::stoi(line);
+            else if (word == "result")
+                node.result = std::stoi(line);
+            else if (word == "e")
+            {
+                this->_nodes.push_back(node);
+                node = {"", "", 0, 0, 0};
+            }
+        }
+        file.close();
+        std::cout << this->_nodes.size() << " positions." << std::endl;
+    }
+}
+
 // Datagen
 
 static const i64 DG_FILE_SIZE = 10000000;
@@ -524,6 +291,142 @@ void DataGen::set_enemy(std::string path_to_engine, int depth, int time, int nod
     }
 }
 #endif
+
+void DataGen::plain(std::string filename, std::string out_file, int file_idx)
+{
+    this->_loader.load(filename);
+
+    this->_filename = out_file;
+
+    this->_dg_max_size = DG_FILE_SIZE * 500;    // Нужно количество файлов. Бахну дофига большое :-) А вообще, нужно это дело отрефакторить
+    this->_dg_file_idx = file_idx;
+
+    this->_size = 0;
+    this->_timer.start();
+
+    this->_dataset_in.resize(2);
+    this->_dataset_in[0].resize(DG_FILE_SIZE * DG_FILE_POS_LEN);
+    this->_dataset_in[1].resize(DG_FILE_SIZE * DG_FILE_POS_LEN);
+
+    this->_dataset_count.resize(this->_dg_max_size / DG_FILE_SIZE);
+    for (auto &item : this->_dataset_count)
+        item = 0;
+
+    this->_res_depth = 0;
+    this->_res_white = 0;
+    this->_res_black = 0;
+    this->_res_draw = 0;
+    this->_enemy_win = 0;
+
+    std::vector<std::thread> threads;
+    for (int i = 0; i < this->_games.size(); ++i)
+        threads.push_back(std::thread(&DataGen::thread_plain, this, i));
+
+    for (int i = 0; i < this->_games.size(); ++i)
+        threads[i].join();
+}
+
+void DataGen::thread_plain(int thread_id)
+{
+    auto &game = this->_games[thread_id];
+    game._prune_pv_moves_count = false;
+
+    while(true)
+    {
+        PlainNode node;
+        if (!this->_loader.get_node(node))
+            break;
+
+        if (node.ply < 16)
+            continue;
+
+        if (abs(node.score) > 20000)
+            continue;
+
+        game.set_fen(node.fen);
+
+        int res = node.score;
+        int game_result = node.result;
+        if (!game._board.is_white(0))
+        {
+            res = -res;
+            game_result = -game_result;
+        }
+        game_result++;
+
+        if (game._board.is_check(0))
+            continue;
+
+        if (this->_hash.check_hash(game._board.get_hash(0)))
+            continue;
+
+        int depth = 6;
+        i16 res1 = game.go_multi(depth, 0, 2, 512, true, &this->_lock3);
+        if (!game._board.is_white(0))
+            res1 = -res1;
+
+        if (game._variants.size() >= 1)
+        {
+            u16 move = game._variants[0]._move;
+            if ((move & Move::KILLED) != 0 || (((move >> 12) & 7) != 0))
+                continue;
+        }
+        if (game._variants.size() >= 2)
+        {
+            u16 move = game._variants[1]._move;
+            if ((move & Move::KILLED) != 0 || (((move >> 12) & 7) != 0))
+                continue;
+        }
+
+        i16 eval = game.eval();
+        if (!game._board.is_white(0))
+            eval = -eval;
+
+        DGPos pos = { static_cast<i16>(game_result),
+            static_cast<i16>(res),
+            eval,
+            static_cast<u8>(game._board.color(0)),
+            game._board._bitboards[0][Board::KING],
+            game._board._bitboards[1][Board::KING],
+            game._board._bitboards[0][Board::PAWN],
+            game._board._bitboards[1][Board::PAWN],
+            game._board._bitboards[0][Board::KNIGHT],
+            game._board._bitboards[1][Board::KNIGHT],
+            game._board._bitboards[0][Board::BISHOP],
+            game._board._bitboards[1][Board::BISHOP],
+            game._board._bitboards[0][Board::ROOK],
+            game._board._bitboards[1][Board::ROOK],
+            game._board._bitboards[0][Board::QUEEN],
+            game._board._bitboards[1][Board::QUEEN]
+        };
+
+        if (game_result == 0)
+            this->_res_black++;
+        else if (game_result == 1)
+            this->_res_draw++;
+        else if (game_result == 2)
+            this->_res_white++;
+
+        if (!this->add_pos(pos, game_result))
+        {
+            std::cout << node.fen << " : " << node.move << " : " << res << " / " << eval << " / " << res1 << " : " << game_result << " : " << node.ply << std::endl;
+            game._board.print();
+            Bitboards::print(game._board._bitboards[0][Board::KING]);
+            Bitboards::print(game._board._bitboards[1][Board::KING]);
+            Bitboards::print(game._board._bitboards[0][Board::PAWN]);
+            Bitboards::print(game._board._bitboards[1][Board::PAWN]);
+            Bitboards::print(game._board._bitboards[0][Board::KNIGHT]);
+            Bitboards::print(game._board._bitboards[1][Board::KNIGHT]);
+            Bitboards::print(game._board._bitboards[0][Board::BISHOP]);
+            Bitboards::print(game._board._bitboards[1][Board::BISHOP]);
+            Bitboards::print(game._board._bitboards[0][Board::ROOK]);
+            Bitboards::print(game._board._bitboards[1][Board::ROOK]);
+            Bitboards::print(game._board._bitboards[0][Board::QUEEN]);
+            Bitboards::print(game._board._bitboards[1][Board::QUEEN]);
+            break;
+        }
+    }
+}
 
 void DataGen::gen(std::string out_file, int files, int file_idx)
 {
@@ -602,7 +505,7 @@ void DataGen::thread_gen(int thread_id, unsigned int seed)
         positions.clear();
 
 #ifdef USE_PSTREAMS
-        if (engine != nullptr && rnd.random01() > 0.9f)
+        if (engine != nullptr && rnd.random01() > 0.95f)
         {
             use_enemy = true;
             engine->ucinewgame();
@@ -637,8 +540,8 @@ void DataGen::thread_gen(int thread_id, unsigned int seed)
                 break;
             }
 
-            int depth = 8;
-            i16 res = game.go_multi(depth, 2800, count, 128, true, &this->_lock3);
+            int depth = 9;
+            i16 res = game.go_multi(depth, 4000, count, 128, true, &this->_lock3);
 
             if (prev_save && abs(res) < 700 && abs(res_prev) < 700 && abs(res + res_prev) > 300 && positions.size() > 2)
                 positions.pop_back();
@@ -647,7 +550,7 @@ void DataGen::thread_gen(int thread_id, unsigned int seed)
             prev_save = false;
 
             if (!game._board.is_white(0))
-                res = -res;;
+                res = -res;
 
             if (game._variants.size() == 0)
             {
@@ -784,8 +687,8 @@ void DataGen::thread_gen(int thread_id, unsigned int seed)
         else if (game_result == 1)
         {
             // Skip some draws
-            if (rnd.random01() > 0.7f)
-                continue;
+            // if (rnd.random01() > 0.7f)
+            //     continue;
             this->_res_draw++;
         }
         else if (game_result == 2)
@@ -807,7 +710,7 @@ void DataGen::thread_gen(int thread_id, unsigned int seed)
     }
 }
 
-void DataGen::convert(int threads_num, std::string in_file, std::string out_file)
+void DataGen::reeval(int threads_num, std::string in_file, std::string out_file)
 {
 #ifdef USE_CNPY
     this->_nns.resize(threads_num);
@@ -834,17 +737,21 @@ void DataGen::convert(int threads_num, std::string in_file, std::string out_file
 
         output_idx.push_back(counter_out);
 
-        int res_sign = data[counter++];
         int res1 = data[counter++];
         int res2 = data[counter++];
-        int game_res = data[counter++];
+        int eval1 = data[counter++];
+        int eval2 = data[counter++];
+        int flags = data[counter++];
 
         DGPos& pos = _positions[i];
         std::memset(&pos, 0, sizeof(DGPos));
 
-        pos.game_res = game_res & 3;
-        pos.res = ((res1 * 256) + res2) * (res_sign ? -1 : 1);
-        pos.color = game_res >> 4;
+        // output[pos++] = (_positions[i].game_res & 3) | (_positions[i].color << 2) | ((_positions[i].res < 0 ? 1 : 0) << 3) | ((_positions[i].eval < 0 ? 1 : 0) << 4);
+
+        pos.game_res = flags & 3;
+        pos.color = (flags >> 2) & 1;
+        pos.res = ((res1 * 256) + res2) * ((flags & (1 << 3)) ? -1 : 1);
+        pos.eval = ((eval1 * 256) + eval2) * ((flags & (1 << 4)) ? -1 : 1);
 
         int counter_bebin = counter;
 
@@ -892,7 +799,7 @@ void DataGen::convert(int threads_num, std::string in_file, std::string out_file
     for (int i = 0; i < this->_nns.size(); ++i)
         threads[i].join();
 
-    std::cout << "Saving file: " << std::endl;
+    std::cout << "Preparing file..." << std::endl;
     for (int i = 0; i < DG_FILE_SIZE; ++i)
     {
         int pos = output_idx[i];
@@ -902,7 +809,7 @@ void DataGen::convert(int threads_num, std::string in_file, std::string out_file
         output[pos++] = abs(_positions[i].eval) % 256;
         output[pos++] = (_positions[i].game_res & 3) | (_positions[i].color << 2) | ((_positions[i].res < 0 ? 1 : 0) << 3) | ((_positions[i].eval < 0 ? 1 : 0) << 4);
     }
-
+    std::cout << "Saving file..." << std::endl;
     cnpy::npy_save(out_file, &output[0], { output.size() });
 #endif
 }
@@ -1024,7 +931,10 @@ bool DataGen::add_pos(DGPos &position, i16 game_res)
 
     int len = pos - DG_FILE_POS_LEN * num;
     if (len > DG_FILE_POS_LEN)
+    {
         std::cout << "ALARM!! len: " << len << " pos: " << pos << " start: " << DG_FILE_POS_LEN * num << " idx: " << idx << " idx2: " << idx2 << " num: " << num << std::endl;
+        return false;
+    }
 
     this->_dataset_in[idx2][DG_FILE_POS_LEN * num] = len;
 

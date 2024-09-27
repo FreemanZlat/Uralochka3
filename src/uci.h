@@ -36,10 +36,9 @@ public:
     void set_best(std::string bestmove, int score);
     std::string get_bestmove();
     int get_score();
-
-private:
     static std::string substring(std::string &string, std::string delimiter = " ");
 
+private:
     std::vector<Game> _games;
     std::thread _game_thread;
 

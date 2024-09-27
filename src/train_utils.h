@@ -5,6 +5,7 @@
 #include <string>
 #include <mutex>
 #include <atomic>
+#include <condition_variable>
 
 #include "game.h"
 #include "common.h"
@@ -13,48 +14,6 @@
 #ifdef USE_PSTREAMS
 #include "uciengine.h"
 #endif
-
-class Tuner
-{
-public:
-    Tuner(int threads);
-
-    enum Type
-    {
-        TUNE,
-        NEURAL,
-        DATASET
-    };
-
-    void load(std::string filename, Type type, int max_size = -1);
-    double eval();
-    void eval_thread(int thread_id);
-    bool eval_get(int &start, int &size, double res, bool print = false);
-    void compute_k();
-    void start(std::string in, std::string out);
-    void eval_dataset(std::string out_file);
-    void dataset_thread(int thread_id);
-    void save(std::string out, int iter, double eval);
-
-private:
-    i64 _size;
-    double _texel_k;
-    std::vector<std::string> _fens;
-    std::vector<int> _cnt_moves;
-    std::vector<double> _results;
-    std::vector<int> _books;
-    std::vector<int> _evals;
-
-    std::vector<Game> _games;
-    double _threads_res;
-    int _threads_current;
-
-    std::mutex _lock1;
-
-    std::vector<std::vector<int>> _params;
-
-    Timer _timer;
-};
 
 struct HashTable
 {
@@ -101,6 +60,39 @@ struct DGPos
     u64 bq;
 };
 
+struct PlainNode
+{
+    std::string fen;
+    std::string move;
+    int score;
+    int ply;
+    int result;
+};
+
+class SFPlainLoader
+{
+public:
+    SFPlainLoader();
+    ~SFPlainLoader();
+    void load(std::string filename);
+    bool get_node(PlainNode &node);
+    bool load_next();
+    bool load_next1();
+
+private:
+    std::vector<std::string> _files;
+    int _file_num;
+    std::mutex _lock;
+    std::mutex _lock_load;
+    std::vector<PlainNode> _nodes;
+    int _node_num;
+    bool _need_load;
+    std::condition_variable _cv;
+    std::thread _thread;
+
+    void thread_loader();
+};
+
 class DataGen
 {
 public:
@@ -109,9 +101,11 @@ public:
 #ifdef USE_PSTREAMS
     void set_enemy(std::string path_to_engine, int depth = 7, int time = 0, int nodes = 0, int hash = 32, bool use_syzygy = false);
 #endif
+    void plain(std::string filename, std::string out_file, int file_idx);
+    void thread_plain(int thread_id);
     void gen(std::string out_file, int files, int file_idx);
     void thread_gen(int thread_id, unsigned int seed);
-    void convert(int threads_num, std::string in_file, std::string out_file);
+    void reeval(int threads_num, std::string in_file, std::string out_file);
     void thread_eval(int thread_id, int size);
     bool add_pos(DGPos &position, i16 game_res);
     void store(u64 bitboard, int idx2, int &pos);
@@ -141,6 +135,8 @@ private:
     Timer _timer;
 
     EPDBook _book;
+
+    SFPlainLoader _loader;
 
     HashTable _hash;
 
@@ -190,7 +186,6 @@ public:
 private:
     UciEngine _engine;
     UCI *_uci;
-
 };
 #endif
 

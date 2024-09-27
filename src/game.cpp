@@ -364,7 +364,7 @@ void Game::go()
         if (this->_is_cancel)
             break;
 
-        this->set_bestmove(i, best_move, res);
+        // this->set_bestmove(i, best_move, res);   // Нужно ли это? По идее устанавливается в search
 
         // Выиграли или проиграли
         if (res < -19000 || res > 19000)

@@ -87,7 +87,7 @@
 #endif
 
 
-#define URALOCHKA3 "Uralochka v3.42.dev4"
+#define URALOCHKA3 "Uralochka v3.42.dev5"
 
 int main(int argc, char** argv)
 {
