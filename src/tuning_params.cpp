@@ -277,7 +277,7 @@ TuningParams::TuningParams()
     this->_params[TuningParams::TUNE_ASP_ALPHA].set(     "TUNE_ASP_ALPHA",      true,   0.8729,     0.0,        1.0     );
     this->_params[TuningParams::TUNE_ASP_BETA].set(      "TUNE_ASP_BETA",       true,   0.5321,     0.0,        1.0     );
 
-    this->_params[TuningParams::TUNE_BETA_DEPTH].set(    "TUNE_BETA_DEPTH",     true,   9.9404,     4.0,        20.0    );
+    this->_params[TuningParams::TUNE_BETA_DEPTH].set(    "TUNE_BETA_DEPTH",     true,   12.000,     4.0,        20.0    );
     this->_params[TuningParams::TUNE_BETA_PRUN].set(     "TUNE_BETA_PRUN",      true,   80.2068,    60.0,       90.0    );
     this->_params[TuningParams::TUNE_BETA_IMPROV_0].set( "TUNE_BETA_IMPROV_0",  true,   -2.5341,    -30.0,      30.0    );
     this->_params[TuningParams::TUNE_BETA_IMPROV_1].set( "TUNE_BETA_IMPROV_1",  true,   78.7447,    60.0,       90.0    );
