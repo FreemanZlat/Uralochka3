@@ -96,12 +96,30 @@ void TranspositionTable::disable()
     this->_enabled = false;
 }
 
+// Как в stash. Внезапно работает лучше, чем просто mod
+inline uint64_t mul_hi64(uint64_t x, uint64_t n)
+{
+#ifdef __SIZEOF_INT128__
+    return ((unsigned __int128)x * (unsigned __int128)n) >> 64;
+#else
+    uint64_t xlo = (uint32_t)x;
+    uint64_t xhi = x >> 32;
+    uint64_t nlo = (uint32_t)n;
+    uint64_t nhi = n >> 32;
+    uint64_t c1 = (xlo * nlo) >> 32;
+    uint64_t c2 = (xhi * nlo) + c1;
+    uint64_t c3 = (xlo * nhi) + (uint32_t)c2;
+
+    return xhi * nhi + (c2 >> 32) + (c3 >> 32);
+#endif
+}
+
 void TranspositionTable::save(u64 hash, int depth, int value, int eval, TTNode::Type type, int move, u8 age)
 {
     if (!this->_enabled)
         return;
 
-    u16 hash16 = static_cast<u16>(hash >> 48);
+    u16 hash16 = static_cast<u16>(hash & 65535);
 
     const u8 AGE_MASK = 0b11111100;
 
@@ -115,7 +133,7 @@ void TranspositionTable::save(u64 hash, int depth, int value, int eval, TTNode::
     new_node._move = move;
     new_node._age_type = age | type;
 
-    u32 idx = hash % this->_table_size;
+    u32 idx = mul_hi64(hash, this->_table_size);
     auto &cell = this->_table[idx];
 
     auto *node = &cell.nodes[0];
@@ -146,9 +164,9 @@ bool TranspositionTable::load(u64 hash, TTNode &node)
 {
     if (this->_enabled)
     {
-        u16 hash16 = static_cast<u16>(hash >> 48);
+        u16 hash16 = static_cast<u16>(hash & 65535);
 
-        u32 idx = hash % this->_table_size;
+        u32 idx = mul_hi64(hash, this->_table_size);
         auto &cell = this->_table[idx];
 
         for (int i = 0; i < CELL_SIZE; ++i)
@@ -178,7 +196,7 @@ void TranspositionTable::prefetch(u64 hash)
 {
     if (this->_enabled)
     {
-        u32 idx = hash % this->_table_size;
+        u32 idx = mul_hi64(hash, this->_table_size);
         __builtin_prefetch(&this->_table[idx]);
 //        _mm_prefetch(&this->_table[idx], _MM_HINT_T0);
     }
