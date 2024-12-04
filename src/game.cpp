@@ -836,7 +836,7 @@ int Game::search(int depth, int ply, int alpha, int beta, u16 &best_move, int sk
         }
 
         // ProbCut
-        if (skip_move == 0 && depth >= (PROBCUT_DEPTH+1) && abs(beta) < 19000)
+        if (skip_move == 0 && depth > PROBCUT_DEPTH && abs(beta) < 19000)
         {
             const int probcut_beta = beta + PROBCUT_BETA;
             auto moves = this->_board.moves_init(ply, true);

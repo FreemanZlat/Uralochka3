@@ -110,5 +110,15 @@ private:
 extern std::vector<int> SEE_PICES_VALUES;
 extern double HIST_COUNTER_COEFF;
 extern double HIST_FOLLOWER_COEFF;
+extern double HIST_BONUS_A;
+extern double HIST_BONUS_B;
+extern double HIST_BONUS_C;
+extern double HIST_BONUS_MAX;
+extern double HIST_BONUS_NEG_A;
+extern double HIST_BONUS_NEG_B;
+extern double HIST_BONUS_NEG_C;
+extern double HIST_BONUS_NEG_MAX;
+
+
 
 #endif // MOVES_H

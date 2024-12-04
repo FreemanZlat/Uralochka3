@@ -46,10 +46,36 @@ void TuningParams::set(Type type, double value)
         break;
 
     case TUNE_HIST_COUNT:
-        HIST_COUNTER_COEFF = std::round(value);
+        HIST_COUNTER_COEFF = value;
         break;
     case TUNE_HIST_FOLLOW:
-        HIST_FOLLOWER_COEFF = std::round(value);
+        HIST_FOLLOWER_COEFF = value;
+        break;
+
+    case TUNE_HIST_BON_A:
+        HIST_BONUS_A = value;
+        break;
+    case TUNE_HIST_BON_B:
+        HIST_BONUS_B = value;
+        break;
+    case TUNE_HIST_BON_C:
+        HIST_BONUS_C = value;
+        break;
+    case TUNE_HIST_BON_MAX:
+        HIST_BONUS_MAX = value;
+        break;
+
+    case TUNE_HIST_BON_N_A:
+        HIST_BONUS_NEG_A = value;
+        break;
+    case TUNE_HIST_BON_N_B:
+        HIST_BONUS_NEG_B = value;
+        break;
+    case TUNE_HIST_BON_N_C:
+        HIST_BONUS_NEG_C = value;
+        break;
+    case TUNE_HIST_BON_N_MAX:
+        HIST_BONUS_NEG_MAX = value;
         break;
 
     case TUNE_FUT_HIST_0:
@@ -243,78 +269,88 @@ TuningParams::TuningParams()
 {
     this->_params.resize(TuningParams::TUNE_END);
 
-    this->_params[TuningParams::TUNE_SEE_PAWN].set(     "TUNE_SEE_PAWN",        true,    98.9402,   85.0,       110.0   );
-    this->_params[TuningParams::TUNE_SEE_KNIGHT].set(   "TUNE_SEE_KNIGHT",      true,   389.9031,   350.0,      450.0   );
-    this->_params[TuningParams::TUNE_SEE_BISHOP].set(   "TUNE_SEE_BISHOP",      true,   404.1222,   350.0,      450.0   );
-    this->_params[TuningParams::TUNE_SEE_ROOK].set(     "TUNE_SEE_ROOK",        true,   649.9316,   500.0,      700.0   );
-    this->_params[TuningParams::TUNE_SEE_QUEEN].set(    "TUNE_SEE_QUEEN",       true,   1268.1191,  1150.0,     1400.0  );
+    this->_params[TuningParams::TUNE_SEE_PAWN].set(     "TUNE_SEE_PAWN",        true,    99.0475,   85.0,       110.0   );
+    this->_params[TuningParams::TUNE_SEE_KNIGHT].set(   "TUNE_SEE_KNIGHT",      true,   394.5262,   350.0,      450.0   );
+    this->_params[TuningParams::TUNE_SEE_BISHOP].set(   "TUNE_SEE_BISHOP",      true,   404.6379,   350.0,      450.0   );
+    this->_params[TuningParams::TUNE_SEE_ROOK].set(     "TUNE_SEE_ROOK",        true,   668.5074,   500.0,      700.0   );
+    this->_params[TuningParams::TUNE_SEE_QUEEN].set(    "TUNE_SEE_QUEEN",       true,   1277.5903,  1150.0,     1400.0  );
 
-    this->_params[TuningParams::TUNE_HIST_COUNT].set(   "TUNE_HIST_COUNT",      true,   1.1889,     0.0,        2.0 );
-    this->_params[TuningParams::TUNE_HIST_FOLLOW].set(  "TUNE_HIST_FOLLOW",     true,   1.0366	,   0.0,        2.0  );
+    this->_params[TuningParams::TUNE_HIST_COUNT].set(   "TUNE_HIST_COUNT",      true,   0.8964,     0.0,        2.0 );
+    this->_params[TuningParams::TUNE_HIST_FOLLOW].set(  "TUNE_HIST_FOLLOW",     true,   0.8030,     0.0,        2.0  );
 
-    this->_params[TuningParams::TUNE_FUT_HIST_0].set(   "TUNE_FUT_HIST_0",      true,   11786.8382, 11000.0,    13000.0 );
-    this->_params[TuningParams::TUNE_FUT_HIST_1].set(   "TUNE_FUT_HIST_1",      true,   6048.1549,  5400.0,     6600.0  );
+    this->_params[TuningParams::TUNE_HIST_BON_A].set(   "TUNE_HIST_BON_A",      true,   1.2872,     0.0,        3.0  );
+    this->_params[TuningParams::TUNE_HIST_BON_B].set(   "TUNE_HIST_BON_B",      true,   2.2167,     -8.0,       8.0  );
+    this->_params[TuningParams::TUNE_HIST_BON_C].set(   "TUNE_HIST_BON_C",      true,   -0.8163,    -8.0,       8.0  );
+    this->_params[TuningParams::TUNE_HIST_BON_MAX].set( "TUNE_HIST_BON_MAX",    true,   397.1581,   200.0,      800.0  );
+
+    this->_params[TuningParams::TUNE_HIST_BON_N_A].set( "TUNE_HIST_BON_N_A",    true,   1.0508,     0.0,        3.0  );
+    this->_params[TuningParams::TUNE_HIST_BON_N_B].set( "TUNE_HIST_BON_N_B",    true,   2.4100,     -8.0,       8.0  );
+    this->_params[TuningParams::TUNE_HIST_BON_N_C].set( "TUNE_HIST_BON_N_C",    true,   2.6054,     -8.0,       8.0  );
+    this->_params[TuningParams::TUNE_HIST_BON_N_MAX].set("TUNE_HIST_BON_N_MAX", true,   400.6993,   200.0,      800.0  );
+
+    this->_params[TuningParams::TUNE_FUT_HIST_0].set(   "TUNE_FUT_HIST_0",      true,   11709.3544, 11000.0,    13000.0 );
+    this->_params[TuningParams::TUNE_FUT_HIST_1].set(   "TUNE_FUT_HIST_1",      true,   6049.2789,  5400.0,     6600.0  );
 
     this->_params[TuningParams::TUNE_COUNT_DEPTH_0].set("TUNE_COUNT_DEPTH_0",   false,  3.0,        1.0,        5.0,    1.0     );
     this->_params[TuningParams::TUNE_COUNT_DEPTH_1].set("TUNE_COUNT_DEPTH_1",   false,  2.0,        1.0,        5.0,    1.0     );
-    this->_params[TuningParams::TUNE_COUNT_HIST_0].set( "TUNE_COUNT_HIST_0",    true,   -1010.0750, -1150.0,    -900.0  );
-    this->_params[TuningParams::TUNE_COUNT_HIST_1].set( "TUNE_COUNT_HIST_1",    true,   -2571.5759, -2800.0,    -2400.0 );
+    this->_params[TuningParams::TUNE_COUNT_HIST_0].set( "TUNE_COUNT_HIST_0",    true,   -1026.5523, -1150.0,    -900.0  );
+    this->_params[TuningParams::TUNE_COUNT_HIST_1].set( "TUNE_COUNT_HIST_1",    true,   -2573.9193, -2800.0,    -2400.0 );
 
-    this->_params[TuningParams::TUNE_SEE_KILL].set(     "TUNE_SEE_KILL",        true,   -15.8237,   -22.0,      -10.0   );
-    this->_params[TuningParams::TUNE_SEE_QUIET].set(    "TUNE_SEE_QUIET",       true,   -64.3437,   -75.0,      -50.0   );
-    this->_params[TuningParams::TUNE_SEE_DEPTH].set(    "TUNE_SEE_DEPTH",       true,   10.7320,    3.0,        15.0    );
+    this->_params[TuningParams::TUNE_SEE_KILL].set(     "TUNE_SEE_KILL",        true,   -17.2844,   -22.0,      -10.0   );
+    this->_params[TuningParams::TUNE_SEE_QUIET].set(    "TUNE_SEE_QUIET",       true,   -66.4763,   -75.0,      -50.0   );
+    this->_params[TuningParams::TUNE_SEE_DEPTH].set(    "TUNE_SEE_DEPTH",       true,   10.4840,    3.0,        15.0    );
 
-    this->_params[TuningParams::TUNE_LMR_0_0].set(      "TUNE_LMR_0_0",         true,   1.9112,     1.8,        2.1     );
-    this->_params[TuningParams::TUNE_LMR_0_1].set(      "TUNE_LMR_0_1",         true,   2.4111,     2.2,        2.8     );
-    this->_params[TuningParams::TUNE_LMR_1_0].set(      "TUNE_LMR_1_0",         true,   3.9197,     3.5,        4.5     );
-    this->_params[TuningParams::TUNE_LMR_1_1].set(      "TUNE_LMR_1_1",         true,   3.9137,     3.5,        4.5     );
+    this->_params[TuningParams::TUNE_LMR_0_0].set(      "TUNE_LMR_0_0",         true,   1.8916,     1.8,        2.1     );
+    this->_params[TuningParams::TUNE_LMR_0_1].set(      "TUNE_LMR_0_1",         true,   2.3842,     2.2,        2.8     );
+    this->_params[TuningParams::TUNE_LMR_1_0].set(      "TUNE_LMR_1_0",         true,   3.9766,     3.5,        4.5     );
+    this->_params[TuningParams::TUNE_LMR_1_1].set(      "TUNE_LMR_1_1",         true,   3.9096,     3.5,        4.5     );
 
-    this->_params[TuningParams::TUNE_LMR_DEPTH_0].set(  "TUNE_LMR_DEPTH_0",     true,   0.3337,     0.0,        1.0     );
-    this->_params[TuningParams::TUNE_LMR_DEPTH_1].set(  "TUNE_LMR_DEPTH_1",     true,   2.5828,     2.0,        2.8     );
+    this->_params[TuningParams::TUNE_LMR_DEPTH_0].set(  "TUNE_LMR_DEPTH_0",     true,   0.2827,     0.0,        1.0     );
+    this->_params[TuningParams::TUNE_LMR_DEPTH_1].set(  "TUNE_LMR_DEPTH_1",     true,   2.4578,     2.0,        2.8     );
 
-    this->_params[TuningParams::TUNE_ASP_DELTA].set(     "TUNE_ASP_DELTA",      true,   18.8625,    10,         30.0    );
-    this->_params[TuningParams::TUNE_ASP_DELTA_INC].set( "TUNE_ASP_DELTA_INC",  true,   1.2455,     1.0,        4.0     );
-    this->_params[TuningParams::TUNE_ASP_ALPHA].set(     "TUNE_ASP_ALPHA",      true,   0.8729,     0.0,        1.0     );
-    this->_params[TuningParams::TUNE_ASP_BETA].set(      "TUNE_ASP_BETA",       true,   0.5321,     0.0,        1.0     );
+    this->_params[TuningParams::TUNE_ASP_DELTA].set(     "TUNE_ASP_DELTA",      true,   19.2287,    10,         30.0    );
+    this->_params[TuningParams::TUNE_ASP_DELTA_INC].set( "TUNE_ASP_DELTA_INC",  true,   1.2176,     1.0,        4.0     );
+    this->_params[TuningParams::TUNE_ASP_ALPHA].set(     "TUNE_ASP_ALPHA",      true,   0.8280,     0.0,        1.0     );
+    this->_params[TuningParams::TUNE_ASP_BETA].set(      "TUNE_ASP_BETA",       true,   0.5175,     0.0,        1.0     );
 
-    this->_params[TuningParams::TUNE_BETA_DEPTH].set(    "TUNE_BETA_DEPTH",     true,   12.000,     4.0,        20.0    );
-    this->_params[TuningParams::TUNE_BETA_PRUN].set(     "TUNE_BETA_PRUN",      true,   80.2068,    60.0,       90.0    );
-    this->_params[TuningParams::TUNE_BETA_IMPROV_0].set( "TUNE_BETA_IMPROV_0",  true,   -2.5341,    -30.0,      30.0    );
-    this->_params[TuningParams::TUNE_BETA_IMPROV_1].set( "TUNE_BETA_IMPROV_1",  true,   78.7447,    60.0,       90.0    );
-    this->_params[TuningParams::TUNE_BETA_HASHHIT_0].set("TUNE_BETA_HASHHIT_0", true,   2.3885,     -30,        30.0    );
-    this->_params[TuningParams::TUNE_BETA_HASHHIT_1].set("TUNE_BETA_HASHHIT_1", true,   1.0102,     -30,        30.0    );
-    this->_params[TuningParams::TUNE_BETA_RETURN].set(   "TUNE_BETA_RETURN",    true,   0.6585,     0.0,        1.0     );
+    this->_params[TuningParams::TUNE_BETA_DEPTH].set(    "TUNE_BETA_DEPTH",     true,   12.6513,    4.0,        20.0    );
+    this->_params[TuningParams::TUNE_BETA_PRUN].set(     "TUNE_BETA_PRUN",      true,   79.7556,    60.0,       90.0    );
+    this->_params[TuningParams::TUNE_BETA_IMPROV_0].set( "TUNE_BETA_IMPROV_0",  true,   -9.2913,    -30.0,      30.0    );
+    this->_params[TuningParams::TUNE_BETA_IMPROV_1].set( "TUNE_BETA_IMPROV_1",  true,   79.9409,    60.0,       90.0    );
+    this->_params[TuningParams::TUNE_BETA_HASHHIT_0].set("TUNE_BETA_HASHHIT_0", true,   7.4923,     -30,        30.0    );
+    this->_params[TuningParams::TUNE_BETA_HASHHIT_1].set("TUNE_BETA_HASHHIT_1", true,   -4.0270,    -30,        30.0    );
+    this->_params[TuningParams::TUNE_BETA_RETURN].set(   "TUNE_BETA_RETURN",    true,   0.7310,     0.0,        1.0     );
 
     // this->_params[TuningParams::TUNE_ALPHA_PRUN].set(    "TUNE_ALPHA_PRUN",     false,  3009.9027,  2600.0,     3400.0  );
 
-    this->_params[TuningParams::TUNE_NULL_MIN].set(      "TUNE_NULL_MIN",       true,   3.5768,     0.0,        10.0,   1.0     );
-    this->_params[TuningParams::TUNE_NULL_REDUCTION].set("TUNE_NULL_REDUCTION", true,   3.1350,     0.0,        10.0,   1.0     );
-    this->_params[TuningParams::TUNE_NULL_DIV_1].set(    "TUNE_NULL_DIV_1",     true,   204.5809,   175.0,      225.0   );
-    this->_params[TuningParams::TUNE_NULL_DIV_2].set(    "TUNE_NULL_DIV_2",     true,   2.5772,     2.0,        10.0,   1.0     );
+    this->_params[TuningParams::TUNE_NULL_MIN].set(      "TUNE_NULL_MIN",       true,   3.8187,     0.0,        10.0,   1.0     );
+    this->_params[TuningParams::TUNE_NULL_REDUCTION].set("TUNE_NULL_REDUCTION", true,   3.1323,     0.0,        10.0,   1.0     );
+    this->_params[TuningParams::TUNE_NULL_DIV_1].set(    "TUNE_NULL_DIV_1",     true,   205.6892,   175.0,      225.0   );
+    this->_params[TuningParams::TUNE_NULL_DIV_2].set(    "TUNE_NULL_DIV_2",     true,   2.4147,     2.0,        10.0,   1.0     );
 
-    this->_params[TuningParams::TUNE_PROBCUT_DEPTH].set( "TUNE_PROBCUT_DEPTH",  true,   6.9167,     2.0,        10.0,   1.0     );
-    this->_params[TuningParams::TUNE_PROBCUT_BETA].set(  "TUNE_PROBCUT_BETA",   true,   114.6255,   95.0,       135.0   );
+    this->_params[TuningParams::TUNE_PROBCUT_DEPTH].set( "TUNE_PROBCUT_DEPTH",  true,   7.0298,     2.0,        10.0,   1.0     );
+    this->_params[TuningParams::TUNE_PROBCUT_BETA].set(  "TUNE_PROBCUT_BETA",   true,   115.8473,   95.0,       135.0   );
 
-    this->_params[TuningParams::TUNE_IIR_PV_RED].set(    "TUNE_IIR_PV_RED",     true,   3.8396,     0.0,        5.0,    1.0     );
-    this->_params[TuningParams::TUNE_IIR_CUT_DEPTH].set( "TUNE_IIR_CUT_DEPTH",  true,   5.0486,     5.0,        12.0,   1.0     );
-    this->_params[TuningParams::TUNE_IIR_CUT_RED].set(   "TUNE_IIR_CUT_RED",    true,   2.2475,     0.0,        5.0,    1.0     );
+    this->_params[TuningParams::TUNE_IIR_PV_RED].set(    "TUNE_IIR_PV_RED",     true,   4.6620,     0.0,        5.0,    1.0     );
+    this->_params[TuningParams::TUNE_IIR_CUT_DEPTH].set( "TUNE_IIR_CUT_DEPTH",  true,   6.7523,     5.0,        12.0,   1.0     );
+    this->_params[TuningParams::TUNE_IIR_CUT_RED].set(   "TUNE_IIR_CUT_RED",    true,   2.5676,     0.0,        5.0,    1.0     );
 
-    this->_params[TuningParams::TUNE_FUT_MARGIN_0].set(  "TUNE_FUT_MARGIN_0",   true,   88.3807,    75.0,       110.0   );
-    this->_params[TuningParams::TUNE_FUT_MARGIN_1].set(  "TUNE_FUT_MARGIN_1",   true,   56.2478,    45.0,       80.0    );
-    this->_params[TuningParams::TUNE_FUT_MARGIN_2].set(  "TUNE_FUT_MARGIN_2",   true,   160.0337,   140.0,      180.0   );
+    this->_params[TuningParams::TUNE_FUT_MARGIN_0].set(  "TUNE_FUT_MARGIN_0",   true,   88.3773,    75.0,       110.0   );
+    this->_params[TuningParams::TUNE_FUT_MARGIN_1].set(  "TUNE_FUT_MARGIN_1",   true,   54.1788,    45.0,       80.0    );
+    this->_params[TuningParams::TUNE_FUT_MARGIN_2].set(  "TUNE_FUT_MARGIN_2",   true,   159.8193,   140.0,      180.0   );
 
-    this->_params[TuningParams::TUNE_SING_DEPTH_1].set(  "TUNE_SING_DEPTH_1",   true,   6.4922,     2.0,        12.0,   1.0     );
-    this->_params[TuningParams::TUNE_SING_DEPTH_2].set(  "TUNE_SING_DEPTH_2",   true,   3.1657,     0.0,        10.0,   1.0     );
-    this->_params[TuningParams::TUNE_SING_COEFF].set(    "TUNE_SING_COEFF",     true,   0.4948,     0.1,        1.0     );
-    this->_params[TuningParams::TUNE_SING_EXTS].set(     "TUNE_SING_EXTS",      true,   7.8232,     4.0,        20.0,   1.0     );
+    this->_params[TuningParams::TUNE_SING_DEPTH_1].set(  "TUNE_SING_DEPTH_1",   true,   7.1901,     2.0,        12.0,   1.0     );
+    this->_params[TuningParams::TUNE_SING_DEPTH_2].set(  "TUNE_SING_DEPTH_2",   true,   2.6764,     0.0,        10.0,   1.0     );
+    this->_params[TuningParams::TUNE_SING_COEFF].set(    "TUNE_SING_COEFF",     true,   0.4833,     0.1,        1.0     );
+    this->_params[TuningParams::TUNE_SING_EXTS].set(     "TUNE_SING_EXTS",      true,   8.0309,     4.0,        20.0,   1.0     );
     // this->_params[TuningParams::TUNE_SING_BETA].set(     "TUNE_SING_BETA",      true,   15.0,       5.0,        30.0    );
 
-    this->_params[TuningParams::TUNE_HIST_REDUCT].set(   "TUNE_HIST_REDUCT",    true,   5111.0854,  4400.0,     5600.0  );
+    this->_params[TuningParams::TUNE_HIST_REDUCT].set(   "TUNE_HIST_REDUCT",    true,   5175.9772,  4400.0,     5600.0  );
 
-    this->_params[TuningParams::TUNE_EVAL_DIVIDER].set(  "TUNE_EVAL_DIVIDER",   true,   485.3722,   400.0,      600.0   );
+    this->_params[TuningParams::TUNE_EVAL_DIVIDER].set(  "TUNE_EVAL_DIVIDER",   true,   495.1720,   400.0,      600.0   );
 
-    this->_params[TuningParams::TUNE_TIME_MID].set(      "TUNE_TIME_MID",       true,   46.3433,    35,         60.0    );
-    this->_params[TuningParams::TUNE_TIME_MID_VAL].set(  "TIME_MID_VAL",        true,   0.5381,     0.0,        1.0     );
+    this->_params[TuningParams::TUNE_TIME_MID].set(      "TUNE_TIME_MID",       true,   45.6009,    35,         60.0    );
+    this->_params[TuningParams::TUNE_TIME_MID_VAL].set(  "TIME_MID_VAL",        true,   0.5155,     0.0,        1.0     );
     this->_params[TuningParams::TUNE_TIME_C_MIN].set(    "TUNE_TIME_C_MIN",     false,  25.0,       10,         50.0    );
     this->_params[TuningParams::TUNE_TIME_D_MIN].set(    "TUNE_TIME_D_MIN",     false,  50.0,       25,         75.0    );
     this->_params[TuningParams::TUNE_TIME_C_MAX].set(    "TUNE_TIME_C_MAX",     false,  25.0,       10,         50.0    );

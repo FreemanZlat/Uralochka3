@@ -31,6 +31,16 @@ public:
         TUNE_HIST_COUNT,
         TUNE_HIST_FOLLOW,
 
+        TUNE_HIST_BON_A,
+        TUNE_HIST_BON_B,
+        TUNE_HIST_BON_C,
+        TUNE_HIST_BON_MAX,
+
+        TUNE_HIST_BON_N_A,
+        TUNE_HIST_BON_N_B,
+        TUNE_HIST_BON_N_C,
+        TUNE_HIST_BON_N_MAX,
+
         TUNE_FUT_HIST_0,
         TUNE_FUT_HIST_1,
 

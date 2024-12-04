@@ -2,10 +2,20 @@
 
 #include "board.h"
 
+#include <cmath>
+
 std::vector<int> SEE_PICES_VALUES = { 0, 20000, 0, 0, 0, 0, 0 };
 
 double HIST_COUNTER_COEFF = 0;
 double HIST_FOLLOWER_COEFF = 0;
+double HIST_BONUS_A = 0;
+double HIST_BONUS_B = 0;
+double HIST_BONUS_C = 0;
+double HIST_BONUS_MAX = 0;
+double HIST_BONUS_NEG_A = 0;
+double HIST_BONUS_NEG_B = 0;
+double HIST_BONUS_NEG_C = 0;
+double HIST_BONUS_NEG_MAX = 0;
 
 static const std::vector<char> &SYMBOLS = { '*', 'k', 'q', 'r', 'b', 'n', 'p' };
 
@@ -105,9 +115,8 @@ void Moves::update_history(int depth, int color)
     if (count == 0 && depth <= 3)
         return;
 
-    int bonus = depth*depth;
-    if (bonus > 400)
-        bonus = 400;
+    int bonus = std::round(std::max(0.0, std::min(HIST_BONUS_MAX, HIST_BONUS_A * depth*depth + HIST_BONUS_B * depth + HIST_BONUS_C)));
+    int bonus_neg = -std::round(std::max(0.0, std::min(HIST_BONUS_NEG_MAX, HIST_BONUS_NEG_A * depth*depth + HIST_BONUS_NEG_B * depth + HIST_BONUS_NEG_C)));
 
     int good_from = this->_hist_moves[count] & 63;
     int good_to = (this->_hist_moves[count] >> 6) & 63;
@@ -129,11 +138,11 @@ void Moves::update_history(int depth, int color)
         int bad_from = this->_hist_moves[i] & 63;
         int bad_to = (this->_hist_moves[i] >> 6) & 63;
         int bad_piece = this->_hist_moves[i] >> 16;
-        history_bonus(this->_history->_history[color][bad_from][bad_to], -bonus);
+        history_bonus(this->_history->_history[color][bad_from][bad_to], bonus_neg);
         if (this->_move_counter != 0)
-            history_bonus(this->_history->_followers[0][this->_piece_counter][counter_to][bad_piece][bad_to], -bonus);
+            history_bonus(this->_history->_followers[0][this->_piece_counter][counter_to][bad_piece][bad_to], bonus_neg);
         if (this->_move_follower != 0)
-            history_bonus(this->_history->_followers[1][this->_piece_follower][follower_to][bad_piece][bad_to], -bonus);
+            history_bonus(this->_history->_followers[1][this->_piece_follower][follower_to][bad_piece][bad_to], bonus_neg);
     }
 }
 
@@ -750,8 +759,7 @@ bool Moves::check_00_000(int square, int piece_move, int count_empty, bool is_wh
 
 void Moves::history_bonus(int &node, int bonus)
 {
-    int abs_bonus = bonus > 0 ? bonus : -bonus;
-    node += 32 * bonus - node * abs_bonus / 512;
+    node += 32 * bonus - node * std::abs(bonus) / 512;
 }
 
 u64 Moves::attacks_all(int pos, int color, u64 all)
