@@ -89,6 +89,7 @@ private:
     bool _need_load;
     std::condition_variable _cv;
     std::thread _thread;
+    bool _is_thread;
 
     void thread_loader();
 };

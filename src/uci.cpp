@@ -212,7 +212,6 @@ void UCI::non_uci(std::string input)
 {
     while (!input.empty())
     {
-
         std::string cmd = UCI::substring(input);
         std::transform (cmd.begin(), cmd.end(), cmd.begin(), ::tolower);
 
@@ -319,8 +318,10 @@ void UCI::non_uci(std::string input)
             DataGen generator;
             generator.init(threads, hash1, hash2, book);
 
+#ifdef USE_PSTREAMS
             if (enemy != "")
                 generator.set_enemy(enemy, enemy_depth, enemy_time, enemy_nodes);
+#endif
 
             generator.gen("data/dg", files, file_idx);
 

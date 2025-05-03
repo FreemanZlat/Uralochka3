@@ -120,11 +120,13 @@ SFPlainLoader::SFPlainLoader()
     this->_nodes.clear();
     this->_node_num = 0;
     this->_need_load = false;
+    this->_is_thread = false;
 }
 
 SFPlainLoader::~SFPlainLoader()
 {
-    this->_thread.join();
+    if (this->_is_thread)
+        this->_thread.join();
 }
 
 void SFPlainLoader::load(std::string filename)
@@ -141,6 +143,7 @@ void SFPlainLoader::load(std::string filename)
     this->_nodes.clear();
     this->_node_num = 0;
 
+    this->_is_thread = true;
     this->_thread = std::thread(&SFPlainLoader::thread_loader, this);
 }
 
@@ -540,8 +543,8 @@ void DataGen::thread_gen(int thread_id, unsigned int seed)
                 break;
             }
 
-            int depth = 9;
-            i16 res = game.go_multi(depth, 4000, count, 128, true, &this->_lock3);
+            int depth = 9;  //  8
+            i16 res = game.go_multi(depth, 4000, count, 128, true, &this->_lock3);  //  3000
 
             if (prev_save && abs(res) < 700 && abs(res_prev) < 700 && abs(res + res_prev) > 300 && positions.size() > 2)
                 positions.pop_back();
@@ -687,8 +690,8 @@ void DataGen::thread_gen(int thread_id, unsigned int seed)
         else if (game_result == 1)
         {
             // Skip some draws
-            // if (rnd.random01() > 0.7f)
-            //     continue;
+            if (rnd.random01() > 0.90f)
+                continue;
             this->_res_draw++;
         }
         else if (game_result == 2)

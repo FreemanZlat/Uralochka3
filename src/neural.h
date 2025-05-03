@@ -5,33 +5,42 @@
 
 #include "common.h"
 
+
 #define K_SIZE          (16)
 #define P_SIZE          (768)
 #define IN_SIZE         (K_SIZE*P_SIZE)
 #define HIDDEN_SIZE     (1024)
 #define HIDDEN_SIZE2    (HIDDEN_SIZE * 2)
-#define OUT_SIZE        (6)
-#define PADDING         (32-OUT_SIZE)
+
+#define OUT_SIZE        (6)                 // S_SIZE
+
+#define PADDING         (32-OUT_SIZE)       // PSQT
+
+#define HIDDEN2_SIZE    (OUT_SIZE)
+
+#ifdef PADDING
 #define L1_OUT_SIZE     (HIDDEN_SIZE + OUT_SIZE)
 #define L1_OUT_SIZE_P   (L1_OUT_SIZE + PADDING)
-//#define L1_OUT_SIZE     (HIDDEN_SIZE)
-//#define L1_OUT_SIZE_P   (L1_OUT_SIZE)
+#else
+#define L1_OUT_SIZE     (HIDDEN_SIZE)
+#define L1_OUT_SIZE_P   (L1_OUT_SIZE)
+#endif
+
 #define L1_OUT_SIZE_P2  (L1_OUT_SIZE_P * 2)
 
-#define USE_INTRIN  // fix for case when OUT_SIZE != 1
-//#define CLIPPED_RELU
+#define CLIPPED_RELU
+#define SCRELU
 
 #if defined(__AVX512F__)
 #define BIT_ALIGNMENT   (512)
-#define UNROLL          (256)
 #elif defined(__AVX2__)
 #define BIT_ALIGNMENT   (256)
-#define UNROLL          (128)
 #elif defined(__SSE2__)
 #define BIT_ALIGNMENT   (128)
-#define UNROLL          (64)
 #endif
+#define COUNT_32_BIT   (BIT_ALIGNMENT / 32)
 #define COUNT_16_BIT   (BIT_ALIGNMENT / 16)
+#define COUNT_8_BIT    (BIT_ALIGNMENT / 8)
 #define ALIGNMENT      (BIT_ALIGNMENT / 8)
 
 struct Accumulator
@@ -47,10 +56,15 @@ public:
     void init(std::string filename = "");
     void free();
 
+    float *_l1bias;
+    float *_l1data;
+    float *_l2bias;
+    float *_l2data;
+
     i16 *_l1bias_avx;
     i16 *_l1data_avx;
-    i16 *_l2bias_avx;
-    i16 *_l2data_avx;
+    i32 *_l2bias_avx;
+    i16 *_l2data_avx;   // may be i32!!!
 
 private:
     Model();
@@ -79,6 +93,8 @@ public:
 
 private:
     Accumulator _stack[128];
+
+    float l2_predict(i16 *to_move, i16 *opponent, int stage);
 };
 
 extern double EVAL_DIVIDER;
