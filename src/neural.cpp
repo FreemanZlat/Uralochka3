@@ -316,6 +316,86 @@ void Neural::accum_piece_remove(int stack_pointer, int wk, int bk, int color, in
             sum[i + L1_OUT_SIZE_P/COUNT_16_BIT] = avx_sub_epi16(sum[i + L1_OUT_SIZE_P/COUNT_16_BIT], l1data[b_pos+i]);
 }
 
+void Neural::accum_piece_remove_add(int stack_pointer, int wk, int bk, int color_r, int piece_r, int sq_r, int color_a, int piece_a, int sq_a, bool do_w, bool do_b)
+{
+    int wk_side = ((wk & 7) > 3) ? 7 : 0;
+    int bk_side = ((bk & 7) > 3) ? 7 : 0;
+
+    int wk_idx = KING_TABLE[wk ^      wk_side];
+    int bk_idx = KING_TABLE[bk ^ 56 ^ bk_side];
+
+    int w_pos_r = wk_idx * P_SIZE +   (sq_r ^      wk_side) +   PIECE_TABLE[color_r][piece_r] *   64;
+    int b_pos_r = bk_idx * P_SIZE +   (sq_r ^ 56 ^ bk_side) +   PIECE_TABLE[1-color_r][piece_r] * 64;
+    int w_pos_a = wk_idx * P_SIZE +   (sq_a ^      wk_side) +   PIECE_TABLE[color_a][piece_a] *   64;
+    int b_pos_a = bk_idx * P_SIZE +   (sq_a ^ 56 ^ bk_side) +   PIECE_TABLE[1-color_a][piece_a] * 64;
+
+    Model &model = Model::instance();
+
+    w_pos_r *= L1_OUT_SIZE_P/COUNT_16_BIT;
+    b_pos_r *= L1_OUT_SIZE_P/COUNT_16_BIT;
+    w_pos_a *= L1_OUT_SIZE_P/COUNT_16_BIT;
+    b_pos_a *= L1_OUT_SIZE_P/COUNT_16_BIT;
+
+    const auto l1data = (avx_register_type_16*) (model._l1data_avx);
+    const auto sum = (avx_register_type_16*) (this->_stack[stack_pointer]._layer1);
+
+    if (do_w)
+        for (int i = 0; i < L1_OUT_SIZE_P/COUNT_16_BIT; ++i)
+        {
+            sum[i] = avx_sub_epi16(sum[i], l1data[w_pos_r+i]);
+            sum[i] = avx_add_epi16(sum[i], l1data[w_pos_a+i]);
+        }
+    if (do_b)
+        for (int i = 0; i < L1_OUT_SIZE_P/COUNT_16_BIT; ++i)
+        {
+            sum[i + L1_OUT_SIZE_P/COUNT_16_BIT] = avx_sub_epi16(sum[i + L1_OUT_SIZE_P/COUNT_16_BIT], l1data[b_pos_r+i]);
+            sum[i + L1_OUT_SIZE_P/COUNT_16_BIT] = avx_add_epi16(sum[i + L1_OUT_SIZE_P/COUNT_16_BIT], l1data[b_pos_a+i]);
+        }
+}
+
+void Neural::accum_piece_remove_add_remove(int stack_pointer, int wk, int bk, int color_r1, int piece_r1, int sq_r1, int color_a, int piece_a, int sq_a, int color_r2, int piece_r2, int sq_r2, bool do_w, bool do_b)
+{
+    int wk_side = ((wk & 7) > 3) ? 7 : 0;
+    int bk_side = ((bk & 7) > 3) ? 7 : 0;
+
+    int wk_idx = KING_TABLE[wk ^      wk_side];
+    int bk_idx = KING_TABLE[bk ^ 56 ^ bk_side];
+
+    int w_pos_r1 = wk_idx * P_SIZE +   (sq_r1 ^      wk_side) +   PIECE_TABLE[color_r1][piece_r1] *   64;
+    int b_pos_r1 = bk_idx * P_SIZE +   (sq_r1 ^ 56 ^ bk_side) +   PIECE_TABLE[1-color_r1][piece_r1] * 64;
+    int w_pos_a =  wk_idx * P_SIZE +   (sq_a ^       wk_side) +   PIECE_TABLE[color_a][piece_a] *     64;
+    int b_pos_a =  bk_idx * P_SIZE +   (sq_a ^ 56 ^  bk_side) +   PIECE_TABLE[1-color_a][piece_a] *   64;
+    int w_pos_r2 = wk_idx * P_SIZE +   (sq_r2 ^      wk_side) +   PIECE_TABLE[color_r2][piece_r2] *   64;
+    int b_pos_r2 = bk_idx * P_SIZE +   (sq_r2 ^ 56 ^ bk_side) +   PIECE_TABLE[1-color_r2][piece_r2] * 64;
+
+    Model &model = Model::instance();
+
+    w_pos_r1 *= L1_OUT_SIZE_P/COUNT_16_BIT;
+    b_pos_r1 *= L1_OUT_SIZE_P/COUNT_16_BIT;
+    w_pos_a *=  L1_OUT_SIZE_P/COUNT_16_BIT;
+    b_pos_a *=  L1_OUT_SIZE_P/COUNT_16_BIT;
+    w_pos_r2 *= L1_OUT_SIZE_P/COUNT_16_BIT;
+    b_pos_r2 *= L1_OUT_SIZE_P/COUNT_16_BIT;
+
+    const auto l1data = (avx_register_type_16*) (model._l1data_avx);
+    const auto sum = (avx_register_type_16*) (this->_stack[stack_pointer]._layer1);
+
+    if (do_w)
+        for (int i = 0; i < L1_OUT_SIZE_P/COUNT_16_BIT; ++i)
+        {
+            sum[i] = avx_sub_epi16(sum[i], l1data[w_pos_r2+i]);
+            sum[i] = avx_sub_epi16(sum[i], l1data[w_pos_r1+i]);
+            sum[i] = avx_add_epi16(sum[i], l1data[w_pos_a+i]);
+        }
+    if (do_b)
+        for (int i = 0; i < L1_OUT_SIZE_P/COUNT_16_BIT; ++i)
+        {
+            sum[i + L1_OUT_SIZE_P/COUNT_16_BIT] = avx_sub_epi16(sum[i + L1_OUT_SIZE_P/COUNT_16_BIT], l1data[b_pos_r2+i]);
+            sum[i + L1_OUT_SIZE_P/COUNT_16_BIT] = avx_sub_epi16(sum[i + L1_OUT_SIZE_P/COUNT_16_BIT], l1data[b_pos_r1+i]);
+            sum[i + L1_OUT_SIZE_P/COUNT_16_BIT] = avx_add_epi16(sum[i + L1_OUT_SIZE_P/COUNT_16_BIT], l1data[b_pos_a+i]);
+        }
+}
+
 void Neural::accum_all_pieces(int stack_pointer, u64 wk, u64 bk, u64 wp, u64 bp, u64 wn, u64 bn, u64 wb, u64 bb, u64 wr, u64 br, u64 wq, u64 bq, bool do_w, bool do_b)
 {
     accum_init(stack_pointer, do_w, do_b);
