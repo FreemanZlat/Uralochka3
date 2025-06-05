@@ -1,6 +1,8 @@
 #include "hash.h"
 
 #include <iostream>
+#include <thread>
+#include <vector>
 
 #if defined(__linux__)
     #include <sys/mman.h>
@@ -36,13 +38,14 @@ TranspositionTable &TranspositionTable::instance()
     return theSingleInstance;
 }
 
-void TranspositionTable::init(int size)
+void TranspositionTable::init(u64 size, int threads)
 {
     this->destroy();
+    this->_enabled = false;
 
     const u64 MB = 1ull << 20;
 
-    u32 table_size = size * MB / sizeof(TTCell);
+    u64 table_size = size * MB / sizeof(TTCell);
 
     std::cout << "info string Hash size: " << table_size <<
                  " -- MB: " << table_size * sizeof(TTCell) / MB << std::endl;
@@ -55,8 +58,9 @@ void TranspositionTable::init(int size)
 #endif
 
     this->_table_size = table_size;
-    this->clear();
     this->_enabled = true;
+
+    this->clear(threads);
 }
 
 void TranspositionTable::destroy()
@@ -68,14 +72,30 @@ void TranspositionTable::destroy()
     }
 }
 
-void TranspositionTable::clear()
+void TranspositionTable::clear(int threads)
 {
     if (!this->_enabled)
         return;
 
-//    std::cout << "info string Clear Hash" << std::endl;
+    std::vector<std::thread> thrds;
+    u64 size = this->_table_size / threads;
+    u64 from = 0;
 
-    for (u32 c = 0; c < this->_table_size; ++c)
+    for (int i = 0; i < threads-1; ++i)
+    {
+        thrds.push_back(std::thread(&TranspositionTable::thread_clear, this, from, from+size));
+        from += size;
+    }
+
+    this->thread_clear(from, this->_table_size);
+
+    for (int i = 0; i < threads-1; ++i)
+        thrds[i].join();
+}
+
+void TranspositionTable::thread_clear(u64 from, u64 to)
+{
+    for (u64 c = from; c < to; ++c)
     {
         auto &cell = this->_table[c];
         for (int i = 0; i < CELL_SIZE; ++i)
@@ -92,12 +112,12 @@ void TranspositionTable::clear()
 
 void TranspositionTable::disable()
 {
-    this->clear();
+    this->destroy();
     this->_enabled = false;
 }
 
 // Как в stash. Внезапно работает лучше, чем просто mod
-inline uint64_t mul_hi64(uint64_t x, uint64_t n)
+inline u64 mul_hi64(u64 x, u64 n)
 {
 #ifdef __SIZEOF_INT128__
     return ((unsigned __int128)x * (unsigned __int128)n) >> 64;
@@ -133,7 +153,7 @@ void TranspositionTable::save(u64 hash, int depth, int value, int eval, TTNode::
     new_node._move = move;
     new_node._age_type = age | type;
 
-    u32 idx = mul_hi64(hash, this->_table_size);
+    u64 idx = mul_hi64(hash, this->_table_size);
     auto &cell = this->_table[idx];
 
     auto *node = &cell.nodes[0];
@@ -166,7 +186,7 @@ bool TranspositionTable::load(u64 hash, TTNode &node)
     {
         u16 hash16 = static_cast<u16>(hash & 65535);
 
-        u32 idx = mul_hi64(hash, this->_table_size);
+        u64 idx = mul_hi64(hash, this->_table_size);
         auto &cell = this->_table[idx];
 
         for (int i = 0; i < CELL_SIZE; ++i)
@@ -206,7 +226,7 @@ TranspositionTable::TranspositionTable()
 {
     this->_enabled = false;
     this->_table_size = 0;
-    this->init(32);
+    this->init(32, 1);
 }
 
 TranspositionTable::~TranspositionTable()

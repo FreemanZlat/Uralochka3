@@ -54,7 +54,7 @@ void UCI::start(std::string version)
             std::cout << "id name " << version << std::endl;
             std::cout << "id author Ivan Maklyakov" << std::endl;
             std::cout << "option name Threads type spin default 1 min 1 max 512" << std::endl;
-            std::cout << "option name Hash type spin default 32 min 8 max 65536" << std::endl;
+            std::cout << "option name Hash type spin default 32 min 8 max 262144" << std::endl;
             std::cout << "option name Clear Hash type button" << std::endl;
             std::cout << "option name SyzygyPath type string default " << std::endl;
             std::cout << "option name SyzygyProbeDepth type spin default 0 min 0 max 63" << std::endl;
@@ -87,12 +87,12 @@ void UCI::start(std::string version)
             {
                 UCI::substring(input);  // пропускаем слово value
                 TranspositionTable &table = TranspositionTable::instance();
-                table.init(std::stoi(UCI::substring(input)));
+                table.init(std::stoi(UCI::substring(input)), this->_games.size());
             }
             else if (option == "Clear" && input == "Hash")
             {
                 TranspositionTable &table = TranspositionTable::instance();
-                table.clear();
+                table.clear(this->_games.size());
             }
             else if (option == "SyzygyPath")
             {
@@ -225,7 +225,7 @@ void UCI::non_uci(std::string input)
             if (input.empty())
             {
                 TranspositionTable &table = TranspositionTable::instance();
-                table.init(32);
+                table.init(32, 1);
                 Tests::goBench();
             }
             else
@@ -248,8 +248,7 @@ void UCI::non_uci(std::string input)
 
                 TranspositionTable &table = TranspositionTable::instance();
                 if (hash > 0)
-                    table.init(hash);
-                table.clear();
+                    table.init(hash, threads);
 
                 this->set_threads(threads);
 
@@ -471,8 +470,7 @@ void UCI::non_uci(std::string input)
 
             TranspositionTable &table = TranspositionTable::instance();
             if (hash > 0)
-                table.init(hash);
-            table.clear();
+                table.init(hash, threads);
 
             this->set_threads(threads);
 
@@ -612,7 +610,7 @@ void UCI::newgame()
     this->_depth_count = 0;
 
     TranspositionTable &table = TranspositionTable::instance();
-    table.clear();
+    table.clear(this->_games.size());
 }
 
 void UCI::set_startpos()

@@ -61,7 +61,7 @@ void Tests::goBench()
     printf("Start benchmark\n");
     for (auto &test : TESTS)
     {
-        table.clear();
+        table.clear(1);
 
         Game game;
         game.set_fen(test.fen);

@@ -259,7 +259,7 @@ void DataGen::init(int threads_num, int hash1, int hash2, std::string book)
     if (hash1 == 0)
         table.disable();
     else
-        table.init(hash1);
+        table.init(hash1, threads_num);
 
     if (!book.empty())
         this->_book.load(book);
@@ -858,7 +858,7 @@ bool DataGen::add_pos(DGPos &position, i16 game_res)
     if ((this->_size % 500000) == 0)
     {
         TranspositionTable &table = TranspositionTable::instance();
-        table.clear();
+        table.clear(std::max(1, (int)this->_games.size()/2));
     }
 
     if ((this->_size % 100000) == 0)
@@ -999,7 +999,7 @@ void BookGen::gen(std::string filename, int hash1, int hash2, int book_depth, in
     std::cout << "Fens: " << this->_fens.size() << std::endl;
 
     TranspositionTable &table = TranspositionTable::instance();
-    table.init(hash1);
+    table.init(hash1, this->_games.size());
 
     std::vector<std::thread> threads;
     for (int i = 0; i < this->_games.size(); ++i)

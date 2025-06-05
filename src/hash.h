@@ -52,9 +52,10 @@ class TranspositionTable
 {
 public:
     static TranspositionTable& instance();
-    void init(int size);
+    void init(u64 size, int threads);
     void destroy();
-    void clear();
+    void clear(int threads);
+    void thread_clear(u64 from, u64 to);
     void disable();
     void save(u64 hash, int depth, int value, int eval, TTNode::Type type, int move, u8 age);
     bool load(u64 hash, TTNode &node);
@@ -68,7 +69,7 @@ private:
     TranspositionTable& operator=(const TranspositionTable&) = delete;
 
     TTCell *_table;
-    u32 _table_size;
+    u64 _table_size;
 //    std::atomic<u32> _used_count;
     bool _enabled;
 };
