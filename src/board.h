@@ -111,7 +111,7 @@ public:
 private:
     void piece_remove(int ply, int color, int piece, int square, bool nn_w, bool nn_b);
     void piece_add(int ply, int color, int piece, int square, bool nn_w, bool nn_b);
-    void piece_remove_add(int ply, int color_r, int piece_r, int square_r, int color_a, int piece_a, int square_a, bool nn_w, bool nn_b);
+    void piece_remove_add(int ply, int color_r, int piece_r, int square_r, int color_a, int piece_a, int square_a, bool nn_w, bool nn_b, bool first);
     void piece_remove_add_remove(int ply, int color_r1, int piece_r1, int square_r1, int color_a, int piece_a, int square_a, int color_r2, int piece_r2, int square_r2, bool nn_w, bool nn_b);
 
     bool _is960;

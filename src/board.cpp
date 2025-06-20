@@ -412,7 +412,6 @@ bool Board::move_do(u16 move, int ply, bool same_ply)
 #ifdef USE_NN
     if (king_move)
     {
-//        nn_update = false;
         int new_king_area = Neural::king_area(to, color);
         if (color == 0 && this->_wking_area != new_king_area)
         {
@@ -425,7 +424,6 @@ bool Board::move_do(u16 move, int ply, bool same_ply)
             nn_update_b = false;
         }
     }
-    this->_neural.accum_copy(this->_stack_pointer-1, this->_stack_pointer, nn_update_w, nn_update_b);
 #endif
 
     // Убираем взятого
@@ -440,9 +438,9 @@ bool Board::move_do(u16 move, int ply, bool same_ply)
     {
         // Двигаем фигуру на доске
         if (pawn_morph == 0)
-            this->piece_remove_add(ply, color, piece, from, color, piece, to, nn_update_w, nn_update_b);
+            this->piece_remove_add(ply, color, piece, from, color, piece, to, nn_update_w, nn_update_b, true);
         else
-            this->piece_remove_add(ply, color, piece, from, color, pawn_morph, to, true, true);
+            this->piece_remove_add(ply, color, piece, from, color, pawn_morph, to, true, true, true);
     }
 
     // Сбрасываем флаг взятия на проходе
@@ -524,13 +522,13 @@ bool Board::move_do(u16 move, int ply, bool same_ply)
         if (to - from == 2)
         {
             int rook = this->_board[to + 1];
-            this->piece_remove_add(ply, color, rook, to + 1, color, rook, to - 1, nn_update_w, nn_update_b);
+            this->piece_remove_add(ply, color, rook, to + 1, color, rook, to - 1, nn_update_w, nn_update_b, false);
         }
         // 000
         if (to - from == -2)
         {
             int rook = this->_board[to - 2];
-            this->piece_remove_add(ply, color, rook, to - 2, color, rook, to + 1, nn_update_w, nn_update_b);
+            this->piece_remove_add(ply, color, rook, to - 2, color, rook, to + 1, nn_update_w, nn_update_b, false);
         }
     }
 
@@ -888,7 +886,7 @@ void Board::piece_add(int ply, int color, int piece, int square, bool nn_w, bool
 #endif
 }
 
-void Board::piece_remove_add(int ply, int color_r, int piece_r, int square_r, int color_a, int piece_a, int square_a, bool nn_w, bool nn_b)
+void Board::piece_remove_add(int ply, int color_r, int piece_r, int square_r, int color_a, int piece_a, int square_a, bool nn_w, bool nn_b, bool first)
 {
     Zorbist &zorb = Zorbist::instance();
 
@@ -907,7 +905,7 @@ void Board::piece_remove_add(int ply, int color_r, int piece_r, int square_r, in
         this->_neural.accum_piece_remove_add(this->_stack_pointer, this->_wking, this->_bking,
                                              color_r, piece_r & Board::PIECES_MASK, square_r,
                                              color_a, piece_a & Board::PIECES_MASK, square_a,
-                                             nn_w, nn_b);
+                                             nn_w, nn_b, first);
 #endif
 }
 

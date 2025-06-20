@@ -5,12 +5,18 @@
 
 #include "common.h"
 
+#define IS_PM
 
 #define K_SIZE          (16)
 #define P_SIZE          (768)
 #define IN_SIZE         (K_SIZE*P_SIZE)
 #define HIDDEN_SIZE     (1024)
+
+#ifdef IS_PM
+#define HIDDEN_SIZE2    (HIDDEN_SIZE)
+#else
 #define HIDDEN_SIZE2    (HIDDEN_SIZE * 2)
+#endif
 
 #define OUT_SIZE        (6)                 // S_SIZE
 
@@ -83,7 +89,7 @@ public:
     void accum_copy(int from, int to, bool do_w, bool do_b);
     void accum_piece_add(int stack_pointer, int wk, int bk, int color, int piece, int sq, bool do_w, bool do_b);
     void accum_piece_remove(int stack_pointer, int wk, int bk, int color, int piece, int sq, bool do_w, bool do_b);
-    void accum_piece_remove_add(int stack_pointer, int wk, int bk, int color_r, int piece_r, int sq_r, int color_a, int piece_a, int sq_a, bool do_w, bool do_b);
+    void accum_piece_remove_add(int stack_pointer, int wk, int bk, int color_r, int piece_r, int sq_r, int color_a, int piece_a, int sq_a, bool do_w, bool do_b, bool first);
     void accum_piece_remove_add_remove(int stack_pointer, int wk, int bk, int color_r1, int piece_r1, int sq_r1, int color_a, int piece_a, int sq_a, int color_r2, int piece_r2, int sq_r2, bool do_w, bool do_b);
     void accum_all_pieces(int stack_pointer, u64 wk, u64 bk, u64 wp, u64 bp, u64 wn, u64 bn, u64 wb, u64 bb, u64 wr, u64 br, u64 wq, u64 bq, bool do_w, bool do_b);
     int accum_predict(int stack_pointer, int color, int stage);
