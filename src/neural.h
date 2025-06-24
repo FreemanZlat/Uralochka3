@@ -49,9 +49,21 @@
 #define COUNT_8_BIT    (BIT_ALIGNMENT / 8)
 #define ALIGNMENT      (BIT_ALIGNMENT / 8)
 
+#define L1_SIZE         (L1_OUT_SIZE_P/COUNT_16_BIT)
+
+#define NUM_REGS        (11)
+
 struct Accumulator
 {
     alignas(ALIGNMENT) i16 _layer1[L1_OUT_SIZE_P2];
+    int accurate_point_w;
+    int accurate_point_b;
+    int add_w[34];
+    int add_b[34];
+    int remove_w[4];
+    int remove_b[4];
+    int refresh_w;
+    int refresh_b;
 } __attribute__((aligned(2048)));
 
 class Model
@@ -85,14 +97,19 @@ public:
     Neural();
     ~Neural();
 
-    void accum_init(int stack_pointer, bool do_w, bool do_b);
-    void accum_copy(int from, int to, bool do_w, bool do_b);
-    void accum_piece_add(int stack_pointer, int wk, int bk, int color, int piece, int sq, bool do_w, bool do_b);
-    void accum_piece_remove(int stack_pointer, int wk, int bk, int color, int piece, int sq, bool do_w, bool do_b);
-    void accum_piece_remove_add(int stack_pointer, int wk, int bk, int color_r, int piece_r, int sq_r, int color_a, int piece_a, int sq_a, bool do_w, bool do_b, bool first);
-    void accum_piece_remove_add_remove(int stack_pointer, int wk, int bk, int color_r1, int piece_r1, int sq_r1, int color_a, int piece_a, int sq_a, int color_r2, int piece_r2, int sq_r2, bool do_w, bool do_b);
-    void accum_all_pieces(int stack_pointer, u64 wk, u64 bk, u64 wp, u64 bp, u64 wn, u64 bn, u64 wb, u64 bb, u64 wr, u64 br, u64 wq, u64 bq, bool do_w, bool do_b);
-    int accum_predict(int stack_pointer, int color, int stage);
+    void stack_clear();
+    void stack_push();
+    void stack_pull();
+    void stack_pull_copy();
+
+    void accum_init(bool do_w, bool do_b);
+    void accum_lazy_delta_add(int wk, int bk, int color, int piece, int sq, bool do_w, bool do_b);
+    void accum_lazy_delta_remove(int wk, int bk, int color, int piece, int sq, bool do_w, bool do_b);
+    void accum_lazy_refresh(u64 wk, u64 bk, u64 wp, u64 bp, u64 wn, u64 bn, u64 wb, u64 bb, u64 wr, u64 br, u64 wq, u64 bq, bool do_w, bool do_b);
+    void accum_lazy_update();
+    void accum_piece_add(int wk, int bk, int color, int piece, int sq, bool do_w, bool do_b);
+    void accum_all_pieces(u64 wk, u64 bk, u64 wp, u64 bp, u64 wn, u64 bn, u64 wb, u64 bb, u64 wr, u64 br, u64 wq, u64 bq, bool do_w, bool do_b);
+    int accum_predict(int color, int stage);
 
     int predict_i(int color, u64 wk, u64 bk, u64 wp, u64 bp, u64 wn, u64 bn, u64 wb, u64 bb, u64 wr, u64 br, u64 wq, u64 bq);
     static float sigmoid(float data);
@@ -101,6 +118,12 @@ public:
 
 private:
     Accumulator _stack[128];
+    int _pointer;
+
+    void accum_copy(int from, int to, bool do_w, bool do_b);
+
+    int idx_w(int wk, int color, int piece, int sq);
+    int idx_b(int bk, int color, int piece, int sq);
 
     float l2_predict(i16 *to_move, i16 *opponent, int stage);
 };
