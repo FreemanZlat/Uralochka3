@@ -265,19 +265,7 @@ void Board::set_fen(const std::string &fen)
     // Нейронки
 #ifdef USE_NN
     this->_neural.stack_clear();
-    this->_neural.accum_all_pieces(this->_bitboards[0][Board::KING],
-                                   this->_bitboards[1][Board::KING],
-                                   this->_bitboards[0][Board::PAWN],
-                                   this->_bitboards[1][Board::PAWN],
-                                   this->_bitboards[0][Board::KNIGHT],
-                                   this->_bitboards[1][Board::KNIGHT],
-                                   this->_bitboards[0][Board::BISHOP],
-                                   this->_bitboards[1][Board::BISHOP],
-                                   this->_bitboards[0][Board::ROOK],
-                                   this->_bitboards[1][Board::ROOK],
-                                   this->_bitboards[0][Board::QUEEN],
-                                   this->_bitboards[1][Board::QUEEN],
-                                   true, true);
+    this->_neural.accum_lazy_refresh(this->_bitboards, true, true);
     this->_wking_area = Neural::king_area(this->_wking, 0);
     this->_bking_area = Neural::king_area(this->_bking, 1);
 #endif
@@ -612,19 +600,7 @@ bool Board::move_do(u16 move, int ply, bool same_ply)
 
 #ifdef USE_NN
     if (!nn_update_w || !nn_update_b)
-        this->_neural.accum_lazy_refresh(this->_bitboards[0][Board::KING],
-                                         this->_bitboards[1][Board::KING],
-                                         this->_bitboards[0][Board::PAWN],
-                                         this->_bitboards[1][Board::PAWN],
-                                         this->_bitboards[0][Board::KNIGHT],
-                                         this->_bitboards[1][Board::KNIGHT],
-                                         this->_bitboards[0][Board::BISHOP],
-                                         this->_bitboards[1][Board::BISHOP],
-                                         this->_bitboards[0][Board::ROOK],
-                                         this->_bitboards[1][Board::ROOK],
-                                         this->_bitboards[0][Board::QUEEN],
-                                         this->_bitboards[1][Board::QUEEN],
-                                         !nn_update_w, !nn_update_b);
+        this->_neural.accum_lazy_refresh(this->_bitboards, !nn_update_w, !nn_update_b);
 #endif
 
     // Меняем цвет

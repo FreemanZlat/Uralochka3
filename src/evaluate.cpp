@@ -124,9 +124,7 @@ int Evaluate::eval_neural(int ply)
                     this->_board->_bitboards[1][Board::QUEEN]
                 );
 */
-    int neural = this->_board->_neural.accum_predict(this->_board->color(ply),
-                                                     Neural::stage(Bitboards::bits_count(this->_board->_all_pieces[0] | this->_board->_all_pieces[1]),
-                                                                   (this->_board->_bitboards[0][Board::QUEEN] | this->_board->_bitboards[1][Board::QUEEN]) != 0));
+    int neural = this->_board->_neural.accum_predict(this->_board->color(ply), Neural::stage(Bitboards::bits_count(this->_board->_all_pieces[0] | this->_board->_all_pieces[1])));
 
     int dtz = this->_board->get_dtz();
     if (dtz < 60)

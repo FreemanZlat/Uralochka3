@@ -58,13 +58,17 @@ struct Accumulator
     alignas(ALIGNMENT) i16 _layer1[L1_OUT_SIZE_P2];
     int accurate_point_w;
     int accurate_point_b;
-    int add_w[34];
-    int add_b[34];
+    int add_w[4];
+    int add_b[4];
     int remove_w[4];
     int remove_b[4];
-    int refresh_w;
-    int refresh_b;
-} __attribute__((aligned(2048)));
+};
+
+struct FinnyNode
+{
+    u64 _bitboards[2][7];
+    alignas(ALIGNMENT) i16 _layer1[L1_OUT_SIZE_P];
+};
 
 class Model
 {
@@ -105,25 +109,29 @@ public:
     void accum_init(bool do_w, bool do_b);
     void accum_lazy_delta_add(int wk, int bk, int color, int piece, int sq, bool do_w, bool do_b);
     void accum_lazy_delta_remove(int wk, int bk, int color, int piece, int sq, bool do_w, bool do_b);
-    void accum_lazy_refresh(u64 wk, u64 bk, u64 wp, u64 bp, u64 wn, u64 bn, u64 wb, u64 bb, u64 wr, u64 br, u64 wq, u64 bq, bool do_w, bool do_b);
+    void accum_lazy_refresh(u64 (*bbs)[7], bool do_w, bool do_b);
+    void accum_finny_update(int color, int wk, int bk, u64 (*bbs)[7], FinnyNode *node);
     void accum_lazy_update();
     void accum_piece_add(int wk, int bk, int color, int piece, int sq, bool do_w, bool do_b);
-    void accum_all_pieces(u64 wk, u64 bk, u64 wp, u64 bp, u64 wn, u64 bn, u64 wb, u64 bb, u64 wr, u64 br, u64 wq, u64 bq, bool do_w, bool do_b);
+    void accum_all_pieces(u64 (*bbs)[7], bool do_w, bool do_b);
     int accum_predict(int color, int stage);
 
     int predict_i(int color, u64 wk, u64 bk, u64 wp, u64 bp, u64 wn, u64 bn, u64 wb, u64 bb, u64 wr, u64 br, u64 wq, u64 bq);
     static float sigmoid(float data);
     static int king_area(int sq, int color);
-    static int stage(int pieces_count, bool is_queens);
+    static int stage(int pieces_count);
 
 private:
     Accumulator _stack[128];
     int _pointer;
 
+    FinnyNode _finny[2][K_SIZE*2];
+
     void accum_copy(int from, int to, bool do_w, bool do_b);
 
     int idx_w(int wk, int color, int piece, int sq);
     int idx_b(int bk, int color, int piece, int sq);
+    int idx_finny(int pos, int color);
 
     float l2_predict(i16 *to_move, i16 *opponent, int stage);
 };
