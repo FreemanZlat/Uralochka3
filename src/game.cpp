@@ -95,6 +95,8 @@ Rules::Rules():
 
 Game::Game()
 {
+    this->_is_cancel = false;
+
     this->_depth_max = 64;
     this->_time_margin = 200;
     this->_time_min = 0;

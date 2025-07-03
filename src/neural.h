@@ -22,7 +22,7 @@
 
 #define PADDING         (32-OUT_SIZE)       // PSQT
 
-#define HIDDEN2_SIZE    (OUT_SIZE)
+#define HIDDEN2_SIZE    (8)
 
 #ifdef PADDING
 #define L1_OUT_SIZE     (HIDDEN_SIZE + OUT_SIZE)
@@ -33,9 +33,6 @@
 #endif
 
 #define L1_OUT_SIZE_P2  (L1_OUT_SIZE_P * 2)
-
-#define CLIPPED_RELU
-#define SCRELU
 
 #if defined(__AVX512F__)
 #define BIT_ALIGNMENT   (512)
@@ -82,11 +79,13 @@ public:
     float *_l1data;
     float *_l2bias;
     float *_l2data;
+    float *_l3bias;
+    float *_l3data;
 
     i16 *_l1bias_avx;
     i16 *_l1data_avx;
     i32 *_l2bias_avx;
-    i16 *_l2data_avx;   // may be i32!!!
+    i16 *_l2data_avx;   // !!!
 
 private:
     Model();
@@ -134,6 +133,7 @@ private:
     int idx_finny(int pos, int color);
 
     float l2_predict(i16 *to_move, i16 *opponent, int stage);
+    float l23_predict(i16 *to_move, i16 *opponent, int stage);
 };
 
 extern double EVAL_DIVIDER;
