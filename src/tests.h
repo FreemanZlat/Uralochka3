@@ -8,7 +8,7 @@ class Tests
 {
 public:
     static void goPerft();
-    static void goBench();
+    static u64 goBench(bool print);
 
 private:
     static u64 perft(int ply, int depth, Board &board);

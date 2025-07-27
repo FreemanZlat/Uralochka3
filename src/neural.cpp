@@ -112,15 +112,17 @@ void Model::init(std::string filename)
 
     this->_l1bias = new (std::align_val_t(ALIGNMENT)) float[L1_OUT_SIZE_P];
     this->_l1data = new (std::align_val_t(ALIGNMENT)) float[IN_SIZE * L1_OUT_SIZE_P];
-    this->_l2bias = new (std::align_val_t(ALIGNMENT)) float[HIDDEN2_SIZE];
-    this->_l2data = new (std::align_val_t(ALIGNMENT)) float[HIDDEN_SIZE2 * HIDDEN2_SIZE];
-    this->_l3bias = new (std::align_val_t(ALIGNMENT)) float[OUT_SIZE];
-    this->_l3data = new (std::align_val_t(ALIGNMENT)) float[HIDDEN2_SIZE * OUT_SIZE];
+    this->_l2bias = new (std::align_val_t(ALIGNMENT)) float[L2_OUT_SIZE];
+    this->_l2data = new (std::align_val_t(ALIGNMENT)) float[HIDDEN_SIZE * L2_OUT_SIZE];
+    this->_l3bias = new (std::align_val_t(ALIGNMENT)) float[L3_OUT_SIZE];
+    this->_l3data = new (std::align_val_t(ALIGNMENT)) float[HIDDEN2_SIZE * L3_OUT_SIZE];
+    this->_l4bias = new (std::align_val_t(ALIGNMENT)) float[OUT_SIZE];
+    this->_l4data = new (std::align_val_t(ALIGNMENT)) float[HIDDEN3_SIZE * OUT_SIZE];
 
     this->_l1bias_avx = new (std::align_val_t(ALIGNMENT)) i16[L1_OUT_SIZE_P2];
     this->_l1data_avx = new (std::align_val_t(ALIGNMENT)) i16[IN_SIZE * L1_OUT_SIZE_P];
-    this->_l2bias_avx = new (std::align_val_t(ALIGNMENT)) i32[HIDDEN2_SIZE];
-    this->_l2data_avx = new (std::align_val_t(ALIGNMENT)) i16[HIDDEN_SIZE2 * HIDDEN2_SIZE];
+    this->_l2bias_avx = new (std::align_val_t(ALIGNMENT)) i32[L2_OUT_SIZE];
+    this->_l2data_avx = new (std::align_val_t(ALIGNMENT)) i16[HIDDEN_SIZE * L2_OUT_SIZE];
 
     if (filename == "")
     {
@@ -131,14 +133,18 @@ void Model::init(std::string filename)
         idx += L1_OUT_SIZE_P * sizeof(float);
         memcpy(this->_l1data, &gModelData[idx], IN_SIZE * L1_OUT_SIZE_P * sizeof(float));
         idx += IN_SIZE * L1_OUT_SIZE_P * sizeof(float);
-        memcpy(this->_l2bias, &gModelData[idx], HIDDEN2_SIZE * sizeof(float));
-        idx += HIDDEN2_SIZE * sizeof(float);
-        memcpy(this->_l2data, &gModelData[idx], HIDDEN_SIZE2 * HIDDEN2_SIZE * sizeof(float));
-        idx += HIDDEN_SIZE2 * HIDDEN2_SIZE * sizeof(float);
-        memcpy(this->_l3bias, &gModelData[idx], OUT_SIZE * sizeof(float));
+        memcpy(this->_l2bias, &gModelData[idx], L2_OUT_SIZE * sizeof(float));
+        idx += L2_OUT_SIZE * sizeof(float);
+        memcpy(this->_l2data, &gModelData[idx], HIDDEN_SIZE * L2_OUT_SIZE * sizeof(float));
+        idx += HIDDEN_SIZE * L2_OUT_SIZE * sizeof(float);
+        memcpy(this->_l3bias, &gModelData[idx], L3_OUT_SIZE * sizeof(float));
+        idx += L3_OUT_SIZE * sizeof(float);
+        memcpy(this->_l3data, &gModelData[idx], HIDDEN2_SIZE * L3_OUT_SIZE * sizeof(float));
+        idx += HIDDEN2_SIZE * L3_OUT_SIZE * sizeof(float);
+        memcpy(this->_l4bias, &gModelData[idx], OUT_SIZE * sizeof(float));
         idx += OUT_SIZE * sizeof(float);
-        memcpy(this->_l3data, &gModelData[idx], HIDDEN2_SIZE * OUT_SIZE * sizeof(float));
-        idx += HIDDEN2_SIZE * OUT_SIZE * sizeof(float);
+        memcpy(this->_l4data, &gModelData[idx], HIDDEN3_SIZE * OUT_SIZE * sizeof(float));
+        idx += HIDDEN3_SIZE * OUT_SIZE * sizeof(float);
         if (idx != gModelSize)
             std::cout << "if (idx != gModelSize) --- idx: " << idx << " --- gModelSize: " << gModelSize << std::endl;
 #endif  // NN_FILE
@@ -149,10 +155,12 @@ void Model::init(std::string filename)
         std::fstream file(filename, std::ios::in | std::ios::binary);
         file.read((char *)this->_l1bias, L1_OUT_SIZE_P * sizeof(float));
         file.read((char *)this->_l1data, IN_SIZE * L1_OUT_SIZE_P * sizeof(float));
-        file.read((char *)this->_l2bias, HIDDEN2_SIZE * sizeof(float));
-        file.read((char *)this->_l2data, HIDDEN_SIZE2 * HIDDEN2_SIZE * sizeof(float));
-        file.read((char *)this->_l3bias, OUT_SIZE * sizeof(float));
-        file.read((char *)this->_l3data, HIDDEN2_SIZE * OUT_SIZE * sizeof(float));
+        file.read((char *)this->_l2bias, L2_OUT_SIZE * sizeof(float));
+        file.read((char *)this->_l2data, HIDDEN_SIZE * L2_OUT_SIZE * sizeof(float));
+        file.read((char *)this->_l3bias, L3_OUT_SIZE * sizeof(float));
+        file.read((char *)this->_l3data, HIDDEN2_SIZE * L3_OUT_SIZE * sizeof(float));
+        file.read((char *)this->_l4bias, OUT_SIZE * sizeof(float));
+        file.read((char *)this->_l4data, HIDDEN3_SIZE * OUT_SIZE * sizeof(float));
         file.close();
     }
 
@@ -170,32 +178,43 @@ void Model::init(std::string filename)
         {
             int idx = i * L1_OUT_SIZE_P + j;
             float quant = this->_l1data[idx] * (j < HIDDEN_SIZE ? QUANTIZATION_COEFF_L1 : PSQT_COEFF);
+            // if (j < HIDDEN_SIZE && std::fabs(quant) > 1023.0f)
+            //     std::cout << "L1: " << quant << std::endl;
             this->_l1data_avx[idx] = std::round(quant);
             sum += this->_l1data_avx[idx];
         }
 
     // L2 avx
-    for (int i = 0; i < HIDDEN2_SIZE; ++i)
+    for (int i = 0; i < L2_OUT_SIZE; ++i)
     {
         float quant = this->_l2bias[i] * QUANTIZATION_COEFF_L1 * QUANTIZATION_COEFF_L1 * QUANTIZATION_COEFF_L2;
         this->_l2bias_avx[i] = std::round(quant);
         sum += this->_l2bias_avx[i];
     }
-    for (int i = 0; i < HIDDEN_SIZE2 * HIDDEN2_SIZE; ++i)
+    for (int i = 0; i < HIDDEN_SIZE * L2_OUT_SIZE; ++i)
     {
         float quant = this->_l2data[i] * QUANTIZATION_COEFF_L2;
+        // if (std::fabs(quant) > 1023.0f)
+        //     std::cout << "L2: " << quant << std::endl;
         this->_l2data_avx[i] = std::round(quant);
         sum += this->_l2data_avx[i];
     }
 
-    alignas(ALIGNMENT) i16 tmp[HIDDEN_SIZE2 * HIDDEN2_SIZE];
-    for (int i = 0; i < HIDDEN_SIZE2 * HIDDEN2_SIZE; ++i)
+    alignas(ALIGNMENT) i16 tmp[HIDDEN_SIZE * L2_OUT_SIZE];
+    for (int i = 0; i < HIDDEN_SIZE * L2_OUT_SIZE; ++i)
         tmp[i] = this->_l2data_avx[i];
     const auto l2tmp = (avx_register_type_16*) (tmp);
     const auto l2data = (avx_register_type_16*) (this->_l2data_avx);
-    for (int i = 0; i < HIDDEN_SIZE2/COUNT_16_BIT; ++i)
-        for (int j = 0; j < HIDDEN2_SIZE; ++j)
-            l2data[j + i*HIDDEN2_SIZE] = l2tmp[i + j*HIDDEN_SIZE2/COUNT_16_BIT];
+    for (int i = 0; i < HIDDEN_SIZE/COUNT_16_BIT; ++i)
+        for (int j = 0; j < L2_OUT_SIZE; ++j)
+            l2data[j + i*L2_OUT_SIZE] = l2tmp[i + j*HIDDEN_SIZE/COUNT_16_BIT];
+
+    std::vector<float> tmp3;
+    for (int i = 0; i < HIDDEN2_SIZE * L3_OUT_SIZE; ++i)
+        tmp3.push_back(this->_l3data[i]);
+    for (int i = 0; i < HIDDEN2_SIZE; ++i)
+        for (int j = 0; j < L3_OUT_SIZE; ++j)
+            this->_l3data[j + i*L3_OUT_SIZE] = tmp3[i + j*HIDDEN2_SIZE];
 
     // L1 bias copy
     for (int i = 0; i < L1_OUT_SIZE_P; ++i)
@@ -230,6 +249,12 @@ void Model::free()
     if (this->_l3data)
         ::operator delete[](this->_l3data, std::align_val_t(ALIGNMENT));
     this->_l3data = nullptr;
+    if (this->_l4bias)
+        ::operator delete[](this->_l4bias, std::align_val_t(ALIGNMENT));
+    this->_l4bias = nullptr;
+    if (this->_l4data)
+        ::operator delete[](this->_l4data, std::align_val_t(ALIGNMENT));
+    this->_l4data = nullptr;
 
     if (this->_l1bias_avx)
         ::operator delete[](this->_l1bias_avx, std::align_val_t(ALIGNMENT));
@@ -253,6 +278,8 @@ Model::Model()
     this->_l2data = nullptr;
     this->_l3bias = nullptr;
     this->_l3data = nullptr;
+    this->_l4bias = nullptr;
+    this->_l4data = nullptr;
 
     this->_l1bias_avx = nullptr;
     this->_l1data_avx = nullptr;
@@ -572,8 +599,8 @@ int Neural::accum_predict(int color, int stage)
     this->accum_lazy_update();
 
     float res = color ?
-                    this->l23_predict(&this->_stack[this->_pointer]._layer1[L1_OUT_SIZE_P], &this->_stack[this->_pointer]._layer1[0], stage) :
-                    this->l23_predict(&this->_stack[this->_pointer]._layer1[0], &this->_stack[this->_pointer]._layer1[L1_OUT_SIZE_P], stage);
+                    this->l234_predict(&this->_stack[this->_pointer]._layer1[L1_OUT_SIZE_P], &this->_stack[this->_pointer]._layer1[0], stage) :
+                    this->l234_predict(&this->_stack[this->_pointer]._layer1[0], &this->_stack[this->_pointer]._layer1[L1_OUT_SIZE_P], stage);
 
     if (color)
         res = -res;
@@ -611,70 +638,17 @@ int Neural::stage(int pieces_count)
 #endif
 }
 
-float Neural::l2_predict(i16 *to_move, i16 *opponent, int stage)
+float Neural::l234_predict(i16 *to_move, i16 *opponent, int stage)
 {
     Model &model = Model::instance();
-
-    int l2_idx = stage * HIDDEN_SIZE2/COUNT_16_BIT;
+    int stage_idx_2 = stage * HIDDEN2_SIZE;
+    int stage_idx_3 = stage * HIDDEN3_SIZE;
 
     const auto l1_tomove = (avx_register_type_16*) (to_move);
     const auto l1_opp = (avx_register_type_16*) (opponent);
-    const auto l2data = (avx_register_type_16*) (model._l2data_avx);
-
-    avx_register_type_32 sum = avx_set1_epi32(0);
-    avx_register_type_16 zeros = avx_set1_epi16(0);
-    avx_register_type_16 ones = avx_set1_epi16(QUANTIZATION_COEFF_L1);
-
-    for (int i = 0; i < (HIDDEN_SIZE2 / 2)/COUNT_16_BIT; i++)
-    {
-        auto crelu1a = avx_min_epi16(avx_max_epi16(l1_tomove[i], zeros), ones);
-        auto crelu2a = avx_min_epi16(avx_max_epi16(l1_opp[i], zeros), ones);
-#ifdef IS_PM
-        auto crelu1b = avx_min_epi16(avx_max_epi16(l1_tomove[i + (HIDDEN_SIZE / 2)/COUNT_16_BIT], zeros), ones);
-        auto crelu2b = avx_min_epi16(avx_max_epi16(l1_opp[i + (HIDDEN_SIZE / 2)/COUNT_16_BIT], zeros), ones);
-
-        sum = avx_add_epi32(sum, avx_madd_epi16(avx_mullo_epi16(crelu1a, crelu1b), l2data[l2_idx + i]));
-        sum = avx_add_epi32(sum, avx_madd_epi16(avx_mullo_epi16(crelu2a, crelu2b), l2data[l2_idx + (HIDDEN_SIZE / 2)/COUNT_16_BIT + i]));
-#else
-        // sum = avx_add_epi32(sum, avx_madd_epi16(avx_mullo_epi16(crelu1a, l2data[l2_idx + i]), crelu1a));
-        // sum = avx_add_epi32(sum, avx_madd_epi16(avx_mullo_epi16(crelu2a, l2data[l2_idx + HIDDEN_SIZE/COUNT_16_BIT + i]), crelu2a));
-        sum = avx_add_epi32(sum, avx_madd_epi16(avx_mullo_epi16(crelu1a, crelu1a), l2data[l2_idx + i]));
-        sum = avx_add_epi32(sum, avx_madd_epi16(avx_mullo_epi16(crelu2a, crelu2a), l2data[l2_idx + HIDDEN_SIZE/COUNT_16_BIT + i]));
-#endif
-    }
-
-#if defined(__AVX512F__)
-    const __m256i reduced_8 = _mm256_add_epi32(_mm512_castsi512_si256(sum), _mm512_extracti32x8_epi32(sum, 1));
-#elif defined(__AVX2__)
-    const __m256i reduced_8 = sum;
-#endif
-
-#if defined(__AVX512F__) || defined(__AVX2__)
-    const __m128i reduced_4 = _mm_add_epi32(_mm256_castsi256_si128(reduced_8), _mm256_extractf128_si256(reduced_8, 1));
-#elif defined(__SSE2__)
-    const __m128i reduced_4 = sum;
-#endif
-
-    __m128i vsum = _mm_add_epi32(reduced_4, _mm_srli_si128(reduced_4, 8));
-    vsum         = _mm_add_epi32(vsum, _mm_srli_si128(vsum, 4));
-
-    float res = _mm_cvtsi128_si32(vsum) + (int)model._l2bias_avx[stage];
-    res *= EVAL_DIVIDER / (QUANTIZATION_COEFF_L1*QUANTIZATION_COEFF_L1*QUANTIZATION_COEFF_L2);
-
-#ifdef PADDING
-    int psqt = (to_move[HIDDEN_SIZE + stage] - opponent[HIDDEN_SIZE + stage]) / 2;
-    res += psqt;
-#endif
-    return res;
-}
-
-float Neural::l23_predict(i16 *to_move, i16 *opponent, int stage)
-{
-    Model &model = Model::instance();
-
-    const auto l1_tomove = (avx_register_type_16*) (to_move);
-    const auto l1_opp = (avx_register_type_16*) (opponent);
-    const auto l2data = (avx_register_type_16*) (model._l2data_avx);
+    const auto l2data = (avx_register_type_16*) (&model._l2data_avx[stage_idx_2 * COUNT_16_BIT]);
+    const auto l3data = &model._l3data[stage_idx_3];
+    const auto l4data = &model._l4data[stage_idx_3];
     avx_register_type_16 zeros = avx_set1_epi16(0);
     avx_register_type_16 ones = avx_set1_epi16(QUANTIZATION_COEFF_L1);
 
@@ -682,14 +656,14 @@ float Neural::l23_predict(i16 *to_move, i16 *opponent, int stage)
     for (int j = 0; j < HIDDEN2_SIZE; ++j)
         sums[j] = avx_set1_epi32(0);
 
-    for (int i = 0; i < (HIDDEN_SIZE2 / 2)/COUNT_16_BIT; ++i)
+    for (int i = 0; i < (HIDDEN_SIZE / 2)/COUNT_16_BIT; ++i)
     {
         avx_register_type_16 crelu1 = avx_mullo_epi16(avx_min_epi16(avx_max_epi16(l1_tomove[i], zeros), ones),
                                                       avx_min_epi16(avx_max_epi16(l1_tomove[i + (HIDDEN_SIZE / 2)/COUNT_16_BIT], zeros), ones));
         avx_register_type_16 crelu2 = avx_mullo_epi16(avx_min_epi16(avx_max_epi16(l1_opp[i], zeros), ones),
                                                       avx_min_epi16(avx_max_epi16(l1_opp[i + (HIDDEN_SIZE / 2)/COUNT_16_BIT], zeros), ones));
-        int idx1 = i*HIDDEN2_SIZE;
-        int idx2 = (i + (HIDDEN_SIZE2 / 2)/COUNT_16_BIT)*HIDDEN2_SIZE;
+        int idx1 = i*L2_OUT_SIZE;
+        int idx2 = (i + (HIDDEN_SIZE / 2)/COUNT_16_BIT) * L2_OUT_SIZE;
         for (int j = 0; j < HIDDEN2_SIZE; ++j)
         {
             sums[j] = avx_add_epi32(sums[j], avx_madd_epi16(crelu1, l2data[idx1 + j]));
@@ -697,8 +671,9 @@ float Neural::l23_predict(i16 *to_move, i16 *opponent, int stage)
         }
     }
 
-    int l3_idx = stage * HIDDEN2_SIZE;
-    float res = model._l3bias[stage];
+    alignas(ALIGNMENT) float l4_accum[HIDDEN3_SIZE];
+    memcpy(l4_accum, &model._l3bias[stage_idx_3], HIDDEN3_SIZE*sizeof(float));
+
     for (int i = 0; i < HIDDEN2_SIZE; i += 1)
     {
 #if defined(__AVX512F__)
@@ -716,9 +691,35 @@ float Neural::l23_predict(i16 *to_move, i16 *opponent, int stage)
         __m128i vsum = _mm_add_epi32(reduced_4, _mm_srli_si128(reduced_4, 8));
         vsum         = _mm_add_epi32(vsum, _mm_srli_si128(vsum, 4));
 
-        float sum = _mm_cvtsi128_si32(vsum) + model._l2bias_avx[i];
+        float sum = _mm_cvtsi128_si32(vsum) + model._l2bias_avx[stage_idx_2+i];
         float relu = std::min(std::max(sum / (QUANTIZATION_COEFF_L1*QUANTIZATION_COEFF_L1*QUANTIZATION_COEFF_L2), (float)0.0f), (float)1.0f);
-        res += relu * relu * model._l3data[l3_idx + i];
+        relu *= relu;
+
+        const auto l3data_i = &l3data[i * L3_OUT_SIZE];
+        for (int j = 0; j < HIDDEN3_SIZE; j += 8)
+        {
+            l4_accum[j + 0] += relu * l3data_i[j + 0];
+            l4_accum[j + 1] += relu * l3data_i[j + 1];
+            l4_accum[j + 2] += relu * l3data_i[j + 2];
+            l4_accum[j + 3] += relu * l3data_i[j + 3];
+            l4_accum[j + 4] += relu * l3data_i[j + 4];
+            l4_accum[j + 5] += relu * l3data_i[j + 5];
+            l4_accum[j + 6] += relu * l3data_i[j + 6];
+            l4_accum[j + 7] += relu * l3data_i[j + 7];
+        }
+    }
+
+    float res = model._l4bias[stage];
+    for (int i = 0; i < HIDDEN3_SIZE; i += 8)
+    {
+        res += std::min(std::max(l4_accum[i + 0], (float)0.0f), (float)1.0f) * l4data[i + 0];
+        res += std::min(std::max(l4_accum[i + 1], (float)0.0f), (float)1.0f) * l4data[i + 1];
+        res += std::min(std::max(l4_accum[i + 2], (float)0.0f), (float)1.0f) * l4data[i + 2];
+        res += std::min(std::max(l4_accum[i + 3], (float)0.0f), (float)1.0f) * l4data[i + 3];
+        res += std::min(std::max(l4_accum[i + 4], (float)0.0f), (float)1.0f) * l4data[i + 4];
+        res += std::min(std::max(l4_accum[i + 5], (float)0.0f), (float)1.0f) * l4data[i + 5];
+        res += std::min(std::max(l4_accum[i + 6], (float)0.0f), (float)1.0f) * l4data[i + 6];
+        res += std::min(std::max(l4_accum[i + 7], (float)0.0f), (float)1.0f) * l4data[i + 7];
     }
 
     res *= EVAL_DIVIDER;

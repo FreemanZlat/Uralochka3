@@ -222,57 +222,64 @@ void UCI::non_uci(std::string input)
         else if (cmd == "bench")
         {
             // OpenBench-style bench :)
-            if (input.empty())
+            int count = 1;
+            if (!input.empty())
+                count = std::stoi(UCI::substring(input));
+
+            TranspositionTable &table = TranspositionTable::instance();
+            table.init(32, 1);
+            u64 sum = 0;
+            for (int i = 0; i < count; ++i)
             {
-                TranspositionTable &table = TranspositionTable::instance();
-                table.init(32, 1);
-                Tests::goBench();
+                sum += Tests::goBench(count == 1);
+                if (count > 1)
+                    std::cout << i+1 << "/" << count << " - total fps: " << sum / (i+1) << std::endl;
             }
+        }
+        else if (cmd == "benchgo")
+        {
+            int threads = 1;
+            int time = 5;
+            int hash = 128;
+            std::string fen = "";
+
+            if (!input.empty())
+                threads = std::stoi(UCI::substring(input));
+            if (!input.empty())
+                time = std::stoi(UCI::substring(input));
+            if (!input.empty())
+                hash = std::stoi(UCI::substring(input));
+            if (!input.empty())
+                fen = input;
+
+            std::cout << "benchgo threads=" << threads << " time=" << time << " hash=" << hash << " position=" << (fen == "" ? "startpos" : fen) << std::endl;
+
+            TranspositionTable &table = TranspositionTable::instance();
+            if (hash > 0)
+                table.init(hash, threads);
+
+            this->set_threads(threads);
+
+            if (fen == "")
+                this->set_startpos();
             else
-            {
-                int threads = 1;
-                int time = 5;
-                int hash = 128;
-                std::string fen = "";
+                this->set_fen(fen);
 
-                if (!input.empty())
-                    threads = std::stoi(UCI::substring(input));
-                if (!input.empty())
-                    time = std::stoi(UCI::substring(input));
-                if (!input.empty())
-                    hash = std::stoi(UCI::substring(input));
-                if (!input.empty())
-                    fen = input;
+            Rules rules;
+            rules._movetime = time * 1000 + this->_games[0]._time_margin;
 
-                std::cout << "bench threads=" << threads << " time=" << time << " hash=" << hash << " position=" << (fen == "" ? "startpos" : fen) << std::endl;
+            Timer timer;
+            this->go(rules);
+            auto time_total = timer.get();
 
-                TranspositionTable &table = TranspositionTable::instance();
-                if (hash > 0)
-                    table.init(hash, threads);
+            u64 nodes_total = 0;
+            for (const auto &game : this->_games)
+                nodes_total += game._nodes;
 
-                this->set_threads(threads);
+            this->set_threads(1);
 
-                if (fen == "")
-                    this->set_startpos();
-                else
-                    this->set_fen(fen);
-
-                Rules rules;
-                rules._movetime = time * 1000 + this->_games[0]._time_margin;
-
-                Timer timer;
-                this->go(rules);
-                auto time_total = timer.get();
-
-                u64 nodes_total = 0;
-                for (const auto &game : this->_games)
-                    nodes_total += game._nodes;
-
-                this->set_threads(1);
-
-                u64 nps = 1000ull * nodes_total / time_total;
-                std::cout << "bench: " << nps <<  std::endl;
-            }
+            u64 nps = 1000ull * nodes_total / time_total;
+            std::cout << "bench: " << nps <<  std::endl;
         }
 #ifdef USE_CNPY
         else if (cmd == "dg")

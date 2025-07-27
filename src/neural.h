@@ -5,24 +5,17 @@
 
 #include "common.h"
 
-#define IS_PM
-
 #define K_SIZE          (16)
 #define P_SIZE          (768)
 #define IN_SIZE         (K_SIZE*P_SIZE)
 #define HIDDEN_SIZE     (1024)
-
-#ifdef IS_PM
-#define HIDDEN_SIZE2    (HIDDEN_SIZE)
-#else
-#define HIDDEN_SIZE2    (HIDDEN_SIZE * 2)
-#endif
 
 #define OUT_SIZE        (6)                 // S_SIZE
 
 #define PADDING         (32-OUT_SIZE)       // PSQT
 
 #define HIDDEN2_SIZE    (8)
+#define HIDDEN3_SIZE    (32)
 
 #ifdef PADDING
 #define L1_OUT_SIZE     (HIDDEN_SIZE + OUT_SIZE)
@@ -33,6 +26,9 @@
 #endif
 
 #define L1_OUT_SIZE_P2  (L1_OUT_SIZE_P * 2)
+
+#define L2_OUT_SIZE     (HIDDEN2_SIZE * OUT_SIZE)
+#define L3_OUT_SIZE     (HIDDEN3_SIZE * OUT_SIZE)
 
 #if defined(__AVX512F__)
 #define BIT_ALIGNMENT   (512)
@@ -81,6 +77,8 @@ public:
     float *_l2data;
     float *_l3bias;
     float *_l3data;
+    float *_l4bias;
+    float *_l4data;
 
     i16 *_l1bias_avx;
     i16 *_l1data_avx;
@@ -132,8 +130,7 @@ private:
     int idx_b(int bk, int color, int piece, int sq);
     int idx_finny(int pos, int color);
 
-    float l2_predict(i16 *to_move, i16 *opponent, int stage);
-    float l23_predict(i16 *to_move, i16 *opponent, int stage);
+    float l234_predict(i16 *to_move, i16 *opponent, int stage);
 };
 
 extern double EVAL_DIVIDER;

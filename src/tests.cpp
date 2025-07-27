@@ -51,14 +51,14 @@ void Tests::goPerft()
     }
 }
 
-void Tests::goBench()
+u64 Tests::goBench(bool print)
 {
     TranspositionTable &table = TranspositionTable::instance();
 
     u64 nodes_total = 0;
     u64 time_total = 0;
-
-    printf("Start benchmark\n");
+    if (print)
+        printf("Start benchmark\n");
     for (auto &test : TESTS)
     {
         table.clear(1);
@@ -69,13 +69,16 @@ void Tests::goBench()
         Timer timer;
         u64 nodes = game.go_bench(test.depth);
         time_total += timer.get();
-
-        printf("%s : nodes=%lld\n", test.fen.c_str(), nodes);
+        if (print)
+            printf("%s : nodes=%lld\n", test.fen.c_str(), nodes);
         nodes_total += nodes;
     }
 
-    int nps = 1000ull * nodes_total / time_total;
-    printf("%lld nodes %d nps\n", nodes_total, nps);
+    u64 nps = 1000ull * nodes_total / time_total;
+    if (print)
+        printf("%lld nodes %lld nps\n", nodes_total, nps);
+
+    return nps;
 }
 
 u64 Tests::perft(int ply, int depth, Board &board)
