@@ -2,6 +2,7 @@
 
 #include "board.h"
 
+#include <algorithm>
 #include <cmath>
 
 std::vector<int> SEE_PICES_VALUES = { 0, 20000, 0, 0, 0, 0, 0 };
@@ -62,6 +63,8 @@ History::History()
                         item = 0;
                 this->_counter_moves[i][j][k] = 0;
             }
+        for (auto &item: this->_corrhist_test[i])
+            item = 0;
     }
 }
 
@@ -144,6 +147,12 @@ void Moves::update_history(int depth, int color)
         if (this->_move_follower != 0)
             history_bonus(this->_history->_followers[1][this->_piece_follower][follower_to][bad_piece][bad_to], bonus_neg);
     }
+}
+
+void Moves::update_corrhist(int depth, int color, u64 hash_kp, int bonus)
+{
+    bonus = std::clamp(bonus * depth / 8, -256, 256);
+    this->corrhist_bonus(this->_history->_corrhist_test[color][hash_kp & 16383], bonus);
 }
 
 void Moves::update_killers(u16 move)
@@ -760,6 +769,11 @@ bool Moves::check_00_000(int square, int piece_move, int count_empty, bool is_wh
 void Moves::history_bonus(int &node, int bonus)
 {
     node += 32 * bonus - node * std::abs(bonus) / 512;
+}
+
+void Moves::corrhist_bonus(int &node, int bonus)
+{
+    node += bonus - node * std::abs(bonus) / 1024;
 }
 
 u64 Moves::attacks_all(int pos, int color, u64 all)

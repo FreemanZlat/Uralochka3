@@ -106,6 +106,7 @@ void Board::set_fen(const std::string &fen)
     this->_bking = 255;
     this->_nodes[0]._flags = 0;
     this->_nodes[0]._hash = 0;
+    this->_nodes[0]._hash_ch = 0;
 
     Zorbist &zorb = Zorbist::instance();
 
@@ -390,6 +391,7 @@ bool Board::move_do(u16 move, int ply, bool same_ply)
 
     this->_nodes[ply+1]._flags = this->_nodes[ply]._flags;
     this->_nodes[ply+1]._hash = this->_nodes[ply]._hash;
+    this->_nodes[ply+1]._hash_ch = this->_nodes[ply]._hash_ch;
 
     bool king_move = (piece & Board::PIECES_MASK) == Board::KING;
     bool nn_update_w = true;
@@ -614,6 +616,7 @@ bool Board::move_do(u16 move, int ply, bool same_ply)
     {
         this->_nodes[ply]._flags = this->_nodes[ply+1]._flags;
         this->_nodes[ply]._hash = this->_nodes[ply+1]._hash;
+        this->_nodes[ply]._hash_ch = this->_nodes[ply+1]._hash_ch;
 #ifdef USE_NN
         this->_neural.stack_pull_copy();
 #endif
@@ -714,6 +717,7 @@ void Board::nullmove_do(int ply)
 
     this->_nodes[ply+1]._flags = this->_nodes[ply]._flags ^ FLAG_WHITE_MOVE;
     this->_nodes[ply+1]._hash = this->_nodes[ply]._hash ^ zorb._white_move;
+    this->_nodes[ply+1]._hash_ch = this->_nodes[ply]._hash_ch;
 
     if ((this->_nodes[ply+1]._flags & FLAG_EN_PASSANT_MASK) != FLAG_EN_PASSANT_MASK)
         this->_nodes[ply+1]._hash ^= zorb._en_passant[this->_nodes[ply+1]._flags & FLAG_EN_PASSANT_MASK];
@@ -837,6 +841,8 @@ void Board::piece_remove(int ply, int color, int piece, int square, bool nn_w, b
     Bitboards::bit_clear(this->_bitboards[color][piece & Board::PIECES_MASK], square);
     Bitboards::bit_clear(this->_all_pieces[color], square);
     this->_nodes[ply+1]._hash ^= zorb._pieces[piece][square];
+    if ((piece & Board::PIECES_MASK) == Board::PAWN)
+        this->_nodes[ply+1]._hash_ch ^= zorb._pieces[piece][square];
     this->_board[square] = 0;
 #ifdef USE_NN
     if (nn_w || nn_b)
@@ -851,6 +857,8 @@ void Board::piece_add(int ply, int color, int piece, int square, bool nn_w, bool
     Bitboards::bit_set(this->_bitboards[color][piece & Board::PIECES_MASK], square);
     Bitboards::bit_set(this->_all_pieces[color], square);
     this->_nodes[ply+1]._hash ^= zorb._pieces[piece][square];
+    if ((piece & Board::PIECES_MASK) == Board::PAWN)
+        this->_nodes[ply+1]._hash_ch ^= zorb._pieces[piece][square];
     this->_board[square] = piece;
 #ifdef USE_NN
     if (nn_w || nn_b)

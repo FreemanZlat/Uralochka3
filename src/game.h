@@ -112,6 +112,7 @@ private:
     // Проверка оставшегося времени
     bool check_time();
     void set_bestmove(int depth, u16 best_move, int result);
+    int get_corrhist(int color, u64 hash_kp);
 
     friend class UCI;
     friend class Tuner;

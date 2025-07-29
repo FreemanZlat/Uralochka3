@@ -13,6 +13,7 @@ struct Node
 {
     int _flags;
     u64 _hash;
+    u64 _hash_ch;
     int _eval;
     u16 _move;
     int _move_piece;

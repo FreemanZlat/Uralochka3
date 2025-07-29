@@ -4,6 +4,7 @@
 #include "uci.h"
 #include "syzygy.h"
 
+#include <algorithm>
 #include <iostream>
 #include <map>
 #include <cmath>
@@ -773,10 +774,11 @@ int Game::search(int depth, int ply, int alpha, int beta, u16 &best_move, int sk
     bool is_check = this->_board.is_check(ply);
 
     // Текущая оценка позиции. По возможности из хэш-таблицы
+    int eval_raw = 0;
     int eval = 0;
     if (hash_hit)
     {
-        eval = node._eval;
+        eval_raw = node._eval;
 /*
         // Не работает :(
         if (!is_check && node._value > -19000 && node._value < 19000)
@@ -792,10 +794,14 @@ int Game::search(int depth, int ply, int alpha, int beta, u16 &best_move, int sk
     }
     else
     {
-        eval = this->_eval.eval(ply, alpha, beta);
+        eval_raw = this->_eval.eval(ply, alpha, beta);
         if (!is_check)
-            table.save(hash, 0, eval, eval, TTNode::NONE, 0, this->_age);
+            table.save(hash, 0, eval_raw, eval_raw, TTNode::NONE, 0, this->_age);
     }
+    if (is_check || skip_move != 0)
+        eval = eval_raw;
+    else
+        eval = std::clamp(eval_raw + this->get_corrhist(this->_board.color(ply), this->_board._nodes[ply]._hash_ch), -19000, 19000);
 
     this->_board._nodes[ply]._eval = eval;
 
@@ -907,6 +913,7 @@ int Game::search(int depth, int ply, int alpha, int beta, u16 &best_move, int sk
 
     // Поиск лучшего хода
     int best = -20000;
+    bool best_quiet = false;
     int moves_all = 0;
     int moves_quiets = 0;
     int moves_legal = 0;
@@ -1103,6 +1110,7 @@ int Game::search(int depth, int ply, int alpha, int beta, u16 &best_move, int sk
             this->_board._nodes[ply]._pv[1] = move;
             memcpy(&this->_board._nodes[ply]._pv[2], &this->_board._nodes[ply+1]._pv[1], this->_board._nodes[ply+1]._pv[0] * sizeof(u16));
             best = res;
+            best_quiet = is_quiet;
             move_best = move;
         }
 
@@ -1143,7 +1151,11 @@ int Game::search(int depth, int ply, int alpha, int beta, u16 &best_move, int sk
 
     // Сохраняем результат в хэш-таблицу
     if (skip_move == 0)
-        table.save(hash, depth, best, eval, hash_type, move_best, this->_age);
+        table.save(hash, depth, best, eval_raw, hash_type, move_best, this->_age);
+
+    // Обновление истории коррекции
+    if (!is_check && (move_best == 0 || best_quiet) && ((best < eval && best < beta) || (best > eval && move_best != 0)))
+        moves->update_corrhist(depth, this->_board.color(ply), this->_board._nodes[ply]._hash_ch, best - eval);
 
     if (ply == 0)
         best_move = move_best;
@@ -1196,10 +1208,11 @@ int Game::quiescence(int ply, int alpha, int beta)
     bool is_check = this->_board.is_check(ply);
 
     // Текущая оценка позиции. По возможности из хэш-таблицы
+    int eval_raw = 0;
     int eval = 0;
     if (hash_hit)
     {
-        eval = node._eval;
+        eval_raw = node._eval;
 /*
         // Не работает :(
         if (!is_check && node._value > -19000 && node._value < 19000)
@@ -1215,10 +1228,14 @@ int Game::quiescence(int ply, int alpha, int beta)
     }
     else
     {
-        eval = this->_eval.eval(ply, alpha, beta);
+        eval_raw = this->_eval.eval(ply, alpha, beta);
         if (!is_check)
-            table.save(hash, 0, eval, eval, TTNode::NONE, 0, this->_age);
+            table.save(hash, 0, eval_raw, eval_raw, TTNode::NONE, 0, this->_age);
     }
+    if (is_check)
+        eval = eval_raw;
+    else
+        eval = std::clamp(eval_raw + this->get_corrhist(this->_board.color(ply), this->_board._nodes[ply]._hash_ch), -19000, 19000);
 
     int best = -20000 + ply;
     if (!is_check)
@@ -1287,7 +1304,7 @@ int Game::quiescence(int ply, int alpha, int beta)
     this->_board.moves_free();
 
     // Сохраняем в хэш-таблицу
-    table.save(hash, 0, best, eval, hash_type, move_best, this->_age);
+    table.save(hash, 0, best, eval_raw, hash_type, move_best, this->_age);
 
     return best;
 }
@@ -1369,4 +1386,9 @@ void Game::set_bestmove(int depth, u16 best_move, int result)
     this->_best_value = result;
     this->_best_move = Move::get_string(best_move);
     this->_best_pv = this->_board._nodes[0].get_pv();
+}
+
+int Game::get_corrhist(int color, u64 hash_kp)
+{
+    return this->_board._history._corrhist_test[color][hash_kp & 16383] / 32;
 }

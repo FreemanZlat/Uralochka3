@@ -26,6 +26,7 @@ struct History
     int _history[2][64][64];
     int _followers[2][7][64][7][64];
     u16 _counter_moves[2][7][64];
+    int _corrhist_test[2][16384];
     History();
 };
 
@@ -40,6 +41,7 @@ public:
     void init_generator(bool kills, int ply, u16 move_counter, int piece_counter, u16 move_follower, int piece_follower);
     void update_hash(u16 move);
     void update_history(int depth, int color);
+    void update_corrhist(int depth, int color, u64 hash_kp, int bonus);
     void update_killers(u16 move);
     int get_history(int color, u16 move, int piece, int &counter_hist, int &follower_hist);
     u16 get_next(bool skip_quiets = false);
@@ -81,6 +83,7 @@ private:
     bool check_00_000(int square, int piece_move, int count_empty, bool is_white);
 
     void history_bonus(int &node, int bonus);
+    void corrhist_bonus(int &node, int bonus);
 
     u64 attacks_all(int pos, int color, u64 all);
 
