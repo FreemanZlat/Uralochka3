@@ -112,7 +112,7 @@ private:
     // Проверка оставшегося времени
     bool check_time();
     void set_bestmove(int depth, u16 best_move, int result);
-    int get_corrhist(int color, u64 hash_kp);
+    int get_corrhist(int color, u64 hash_pawn, u64 hash_mat, u64 hash_minor, u64 hash_major);
 
     friend class UCI;
     friend class Tuner;
@@ -184,5 +184,9 @@ extern double TIME_INC_DIV_MIN;
 extern double TIME_INC_COEF_MAX;
 extern double TIME_INC_DIV_MAX;
 
+extern double CORRHIST_PAWN;
+extern double CORRHIST_MINOR;
+extern double CORRHIST_MAJOR;
+extern int CORRHIST_LIMIT;
 
 #endif // GAME_H
