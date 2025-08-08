@@ -250,6 +250,9 @@ void TuningParams::set(Type type, double value)
         TIME_INC_DIV_MAX = value;
         break;
 
+    case TUNE_CH_COEFF:
+        CORRHIST_COEFF = value;
+        break;
     case TUNE_CH_PAWN:
         CORRHIST_PAWN = value;
         break;
@@ -370,10 +373,11 @@ TuningParams::TuningParams()
     this->_params[TuningParams::TUNE_TIME_C_MAX].set(    "TUNE_TIME_C_MAX",     false,  25.0,       10,         50.0    );
     this->_params[TuningParams::TUNE_TIME_D_MAX].set(    "TUNE_TIME_D_MAX",     false,  8.0,        2,          40.0    );
 
-    this->_params[TuningParams::TUNE_CH_PAWN].set(       "TUNE_CH_PAWN",        false,   3200.0000,  2400.0,     4000.0    );
-    this->_params[TuningParams::TUNE_CH_MINOR].set(      "TUNE_CH_MINOR",       false,   3200.0000,  2400.0,     4000.0    );
-    this->_params[TuningParams::TUNE_CH_MAJOR].set(      "TUNE_CH_MAJOR",       false,   3200.0000,  2400.0,     4000.0    );
-    this->_params[TuningParams::TUNE_CH_LIMIT].set(      "TUNE_CH_LIMIT",       false,   256.0000,   128.0,      384.0     );
+    this->_params[TuningParams::TUNE_CH_COEFF].set(      "TUNE_CH_COEFF",       true,   62.5,       32.0,       128.0,  20.0    );
+    this->_params[TuningParams::TUNE_CH_PAWN].set(       "TUNE_CH_PAWN",        false,  3200.0000,  2400.0,     4000.0    );
+    this->_params[TuningParams::TUNE_CH_MINOR].set(      "TUNE_CH_MINOR",       false,  3200.0000,  2400.0,     4000.0    );
+    this->_params[TuningParams::TUNE_CH_MAJOR].set(      "TUNE_CH_MAJOR",       false,  3200.0000,  2400.0,     4000.0    );
+    this->_params[TuningParams::TUNE_CH_LIMIT].set(      "TUNE_CH_LIMIT",       false,  256.0000,   128.0,      384.0     );
 
     for (int type = 0; type < TuningParams::TUNE_END; type++)
         this->set((TuningParams::Type)type, this->_params[type].value);

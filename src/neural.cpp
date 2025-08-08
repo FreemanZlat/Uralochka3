@@ -28,7 +28,7 @@ INCBIN(Model, NN_FILE);
 
 #define QUANTIZATION_COEFF_L1   (180)
 #define QUANTIZATION_COEFF_L2   (512)
-#define PSQT_COEFF              (64)
+#define PSQT_COEFF              (512)
 
 
 double EVAL_DIVIDER = 500.0;

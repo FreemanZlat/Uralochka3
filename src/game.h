@@ -184,6 +184,7 @@ extern double TIME_INC_DIV_MIN;
 extern double TIME_INC_COEF_MAX;
 extern double TIME_INC_DIV_MAX;
 
+extern double CORRHIST_COEFF;
 extern double CORRHIST_PAWN;
 extern double CORRHIST_MINOR;
 extern double CORRHIST_MAJOR;

@@ -78,6 +78,7 @@ double TIME_INC_DIV_MIN = 0;
 double TIME_INC_COEF_MAX = 0;
 double TIME_INC_DIV_MAX = 0;
 
+double CORRHIST_COEFF = 0;
 double CORRHIST_PAWN = 0;
 double CORRHIST_MINOR = 0;
 double CORRHIST_MAJOR = 0;
@@ -1413,7 +1414,7 @@ int Game::get_corrhist(int color, u64 hash_pawn, u64 hash_mat, u64 hash_minor, u
     // int tmp = (2 * this->_board._history._corrhist_pawn[color][hash_pawn & 16383]
     //            + this->_board._history._corrhist_material[color][hash_mat & 32767]) / 3;
     int tmp = this->_board._history._corrhist_pawn[color][hash_pawn & 16383];
-    return tmp / 16;
+    return std::round(tmp * CORRHIST_COEFF / 1000.0);
     // return std::round((this->_board._history._corrhist_pawn[color][hash_pawn & 16383] * 100.0) / CORRHIST_PAWN
     //                   + (this->_board._history._corrhist_minor[color][hash_minor & 16383] * 100.0) / CORRHIST_MINOR
     //                   + (this->_board._history._corrhist_major[color][hash_major & 16383] * 100.0) / CORRHIST_MAJOR);

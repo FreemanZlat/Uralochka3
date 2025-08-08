@@ -109,6 +109,7 @@ public:
         TUNE_TIME_C_MAX,
         TUNE_TIME_D_MAX,
 
+        TUNE_CH_COEFF,
         TUNE_CH_PAWN,
         TUNE_CH_MINOR,
         TUNE_CH_MAJOR,
