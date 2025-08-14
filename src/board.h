@@ -14,9 +14,6 @@ struct Node
     int _flags;
     u64 _hash;
     u64 _hash_pawn;
-    // u64 _hash_material;
-    // u64 _hash_minor;
-    // u64 _hash_major;
     int _eval;
     u16 _move;
     int _move_piece;

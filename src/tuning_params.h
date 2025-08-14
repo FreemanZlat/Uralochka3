@@ -111,9 +111,6 @@ public:
 
         TUNE_CH_COEFF,
         TUNE_CH_PAWN,
-        TUNE_CH_MINOR,
-        TUNE_CH_MAJOR,
-        TUNE_CH_LIMIT,
 
         TUNE_END
     };

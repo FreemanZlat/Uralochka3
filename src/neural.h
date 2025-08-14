@@ -32,19 +32,23 @@
 
 #if defined(__AVX512F__)
 #define BIT_ALIGNMENT   (512)
+#define NUM_REGS_1     (11)
+#define NUM_REGS_2     (0)
 #elif defined(__AVX2__)
 #define BIT_ALIGNMENT   (256)
+#define NUM_REGS_1     (11)
+#define NUM_REGS_2     (0)
 #elif defined(__SSE2__)
 #define BIT_ALIGNMENT   (128)
+#define NUM_REGS_1     (11)
+#define NUM_REGS_2     (0)
 #endif
 #define COUNT_32_BIT   (BIT_ALIGNMENT / 32)
 #define COUNT_16_BIT   (BIT_ALIGNMENT / 16)
 #define COUNT_8_BIT    (BIT_ALIGNMENT / 8)
 #define ALIGNMENT      (BIT_ALIGNMENT / 8)
 
-#define L1_SIZE         (L1_OUT_SIZE_P/COUNT_16_BIT)
-
-#define NUM_REGS        (11)
+#define L1_SIZE        (L1_OUT_SIZE_P/COUNT_16_BIT)
 
 struct Accumulator
 {

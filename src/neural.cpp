@@ -430,24 +430,43 @@ void Neural::accum_finny_update(int color, int wk, int bk, u64 (*bbs)[7], FinnyN
     Model &model = Model::instance();
     const auto l1data = (avx_register_type_16*) (model._l1data_avx);
 
-    avx_register_type_16 regs[NUM_REGS];
+    avx_register_type_16 regs[NUM_REGS_1];
 
     const auto sum = (avx_register_type_16*) (node->_layer1);
     const auto sum_real = (avx_register_type_16*) (&stack->_layer1[color == 0 ? 0 : L1_OUT_SIZE_P]);
 
-    for (int i = 0; i < L1_SIZE; i += NUM_REGS)
+    int i = 0;
+    for (i = 0; i < (L1_SIZE-NUM_REGS_1+1); i += NUM_REGS_1)
     {
-        for (int r = 0; r < NUM_REGS; ++r)
+        for (int r = 0; r < NUM_REGS_1; ++r)
             regs[r] = sum[i+r];
 
         for (int j = 1; j <= add[0]; ++j)
-            for (int r = 0; r < NUM_REGS; ++r)
+            for (int r = 0; r < NUM_REGS_1; ++r)
                 regs[r] = avx_add_epi16(regs[r], l1data[add[j] + i+r]);
         for (int j = 1; j <= remove[0]; ++j)
-            for (int r = 0; r < NUM_REGS; ++r)
+            for (int r = 0; r < NUM_REGS_1; ++r)
                 regs[r] = avx_sub_epi16(regs[r], l1data[remove[j] + i+r]);
 
-        for (int r = 0; r < NUM_REGS; ++r)
+        for (int r = 0; r < NUM_REGS_1; ++r)
+        {
+            sum[i+r] = regs[r];
+            sum_real[i+r] = regs[r];
+        }
+    }
+    if (NUM_REGS_2 > 0)
+    {
+        for (int r = 0; r < NUM_REGS_2; ++r)
+            regs[r] = sum[i+r];
+
+        for (int j = 1; j <= add[0]; ++j)
+            for (int r = 0; r < NUM_REGS_2; ++r)
+                regs[r] = avx_add_epi16(regs[r], l1data[add[j] + i+r]);
+        for (int j = 1; j <= remove[0]; ++j)
+            for (int r = 0; r < NUM_REGS_2; ++r)
+                regs[r] = avx_sub_epi16(regs[r], l1data[remove[j] + i+r]);
+
+        for (int r = 0; r < NUM_REGS_2; ++r)
         {
             sum[i+r] = regs[r];
             sum_real[i+r] = regs[r];
@@ -460,7 +479,7 @@ void Neural::accum_lazy_update()
     Model &model = Model::instance();
     const auto l1data = (avx_register_type_16*) (model._l1data_avx);
 
-    avx_register_type_16 regs[NUM_REGS];
+    avx_register_type_16 regs[NUM_REGS_1];
 
     auto stack = &this->_stack[this->_pointer];
 
@@ -472,19 +491,35 @@ void Neural::accum_lazy_update()
         const auto sum = (avx_register_type_16*) (stack_idx->_layer1);
         const auto sum_prev = (avx_register_type_16*) (stack_prev->_layer1);
 
-        for (int i = 0; i < L1_SIZE; i += NUM_REGS)
+        int i = 0;
+        for (i = 0; i < (L1_SIZE-NUM_REGS_1+1); i += NUM_REGS_1)
         {
-            for (int r = 0; r < NUM_REGS; ++r)
+            for (int r = 0; r < NUM_REGS_1; ++r)
                 regs[r] = sum_prev[i+r];
 
             for (int j = 1; j <= stack_idx->add_w[0]; ++j)
-                for (int r = 0; r < NUM_REGS; ++r)
+                for (int r = 0; r < NUM_REGS_1; ++r)
                     regs[r] = avx_add_epi16(regs[r], l1data[stack_idx->add_w[j] + i+r]);
             for (int j = 1; j <= stack_idx->remove_w[0]; ++j)
-                for (int r = 0; r < NUM_REGS; ++r)
+                for (int r = 0; r < NUM_REGS_1; ++r)
                     regs[r] = avx_sub_epi16(regs[r], l1data[stack_idx->remove_w[j] + i+r]);
 
-            for (int r = 0; r < NUM_REGS; ++r)
+            for (int r = 0; r < NUM_REGS_1; ++r)
+                sum[i+r] = regs[r];
+        }
+        if (NUM_REGS_2 > 0)
+        {
+            for (int r = 0; r < NUM_REGS_2; ++r)
+                regs[r] = sum_prev[i+r];
+
+            for (int j = 1; j <= stack_idx->add_w[0]; ++j)
+                for (int r = 0; r < NUM_REGS_2; ++r)
+                    regs[r] = avx_add_epi16(regs[r], l1data[stack_idx->add_w[j] + i+r]);
+            for (int j = 1; j <= stack_idx->remove_w[0]; ++j)
+                for (int r = 0; r < NUM_REGS_2; ++r)
+                    regs[r] = avx_sub_epi16(regs[r], l1data[stack_idx->remove_w[j] + i+r]);
+
+            for (int r = 0; r < NUM_REGS_2; ++r)
                 sum[i+r] = regs[r];
         }
 
@@ -501,19 +536,35 @@ void Neural::accum_lazy_update()
         const auto sum = (avx_register_type_16*) (stack_idx->_layer1);
         const auto sum_prev = (avx_register_type_16*) (stack_prev->_layer1);
 
-        for (int i = 0; i < L1_SIZE; i += NUM_REGS)
+        int i = 0;
+        for (i = 0; i < (L1_SIZE-NUM_REGS_1+1); i += NUM_REGS_1)
         {
-            for (int r = 0; r < NUM_REGS; ++r)
+            for (int r = 0; r < NUM_REGS_1; ++r)
                 regs[r] = sum_prev[i+r + L1_SIZE];
 
             for (int j = 1; j <= stack_idx->add_b[0]; ++j)
-                for (int r = 0; r < NUM_REGS; ++r)
+                for (int r = 0; r < NUM_REGS_1; ++r)
                     regs[r] = avx_add_epi16(regs[r], l1data[stack_idx->add_b[j] + i+r]);
             for (int j = 1; j <= stack_idx->remove_b[0]; ++j)
-                for (int r = 0; r < NUM_REGS; ++r)
+                for (int r = 0; r < NUM_REGS_1; ++r)
                     regs[r] = avx_sub_epi16(regs[r], l1data[stack_idx->remove_b[j] + i+r]);
 
-            for (int r = 0; r < NUM_REGS; ++r)
+            for (int r = 0; r < NUM_REGS_1; ++r)
+                sum[i+r + L1_SIZE] = regs[r];
+        }
+        if (NUM_REGS_2 > 0)
+        {
+            for (int r = 0; r < NUM_REGS_2; ++r)
+                regs[r] = sum_prev[i+r + L1_SIZE];
+
+            for (int j = 1; j <= stack_idx->add_b[0]; ++j)
+                for (int r = 0; r < NUM_REGS_2; ++r)
+                    regs[r] = avx_add_epi16(regs[r], l1data[stack_idx->add_b[j] + i+r]);
+            for (int j = 1; j <= stack_idx->remove_b[0]; ++j)
+                for (int r = 0; r < NUM_REGS_2; ++r)
+                    regs[r] = avx_sub_epi16(regs[r], l1data[stack_idx->remove_b[j] + i+r]);
+
+            for (int r = 0; r < NUM_REGS_2; ++r)
                 sum[i+r + L1_SIZE] = regs[r];
         }
 

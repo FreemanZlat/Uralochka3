@@ -80,9 +80,6 @@ double TIME_INC_DIV_MAX = 0;
 
 double CORRHIST_COEFF = 0;
 double CORRHIST_PAWN = 0;
-double CORRHIST_MINOR = 0;
-double CORRHIST_MAJOR = 0;
-int CORRHIST_LIMIT = 0;
 
 Rules::Rules():
     _depth(0),
@@ -807,11 +804,7 @@ int Game::search(int depth, int ply, int alpha, int beta, u16 &best_move, int sk
         eval = eval_raw;
     else
         eval = std::clamp(eval_raw + this->get_corrhist(this->_board.color(ply),
-                                                        this->_board._nodes[ply]._hash_pawn,
-                                                        // this->_board._nodes[ply]._hash_material,
-                                                        // this->_board._nodes[ply]._hash_minor,
-                                                        // this->_board._nodes[ply]._hash_major
-                                                        0,0,0), -19000, 19000);
+                                                        this->_board._nodes[ply]._hash_pawn), -19000, 19000);
 
     this->_board._nodes[ply]._eval = eval;
 
@@ -1167,11 +1160,7 @@ int Game::search(int depth, int ply, int alpha, int beta, u16 &best_move, int sk
     if (!is_check && (move_best == 0 || best_quiet) && ((best < eval && best < beta) || (best > eval && move_best != 0)))
         moves->update_corrhist(this->_board.color(ply),
                                this->_board._nodes[ply]._hash_pawn,
-                               // this->_board._nodes[ply]._hash_material,
-                               // this->_board._nodes[ply]._hash_minor,
-                               // this->_board._nodes[ply]._hash_major,
-                               0,0,0,
-                               std::clamp((best - eval) * depth / 8, -CORRHIST_LIMIT, CORRHIST_LIMIT));
+                               (best - eval) * depth / 8);
 
     if (ply == 0)
         best_move = move_best;
@@ -1252,11 +1241,7 @@ int Game::quiescence(int ply, int alpha, int beta)
         eval = eval_raw;
     else
         eval = std::clamp(eval_raw + this->get_corrhist(this->_board.color(ply),
-                                                        this->_board._nodes[ply]._hash_pawn,
-                                                        // this->_board._nodes[ply]._hash_material,
-                                                        // this->_board._nodes[ply]._hash_minor,
-                                                        // this->_board._nodes[ply]._hash_major
-                                                        0,0,0), -19000, 19000);
+                                                        this->_board._nodes[ply]._hash_pawn), -19000, 19000);
 
     int best = -20000 + ply;
     if (!is_check)
@@ -1409,13 +1394,8 @@ void Game::set_bestmove(int depth, u16 best_move, int result)
     this->_best_pv = this->_board._nodes[0].get_pv();
 }
 
-int Game::get_corrhist(int color, u64 hash_pawn, u64 hash_mat, u64 hash_minor, u64 hash_major)
+int Game::get_corrhist(int color, u64 hash_pawn)
 {
-    // int tmp = (2 * this->_board._history._corrhist_pawn[color][hash_pawn & 16383]
-    //            + this->_board._history._corrhist_material[color][hash_mat & 32767]) / 3;
-    int tmp = this->_board._history._corrhist_pawn[color][hash_pawn & 16383];
+    int tmp = this->_board._history._corrhist_pawn[color][hash_pawn & 32767];
     return std::round(tmp * CORRHIST_COEFF / 1000.0);
-    // return std::round((this->_board._history._corrhist_pawn[color][hash_pawn & 16383] * 100.0) / CORRHIST_PAWN
-    //                   + (this->_board._history._corrhist_minor[color][hash_minor & 16383] * 100.0) / CORRHIST_MINOR
-    //                   + (this->_board._history._corrhist_major[color][hash_major & 16383] * 100.0) / CORRHIST_MAJOR);
 }

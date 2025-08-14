@@ -2,6 +2,7 @@
 
 #include "board.h"
 
+#include <algorithm>
 #include <cmath>
 
 std::vector<int> SEE_PICES_VALUES = { 0, 20000, 0, 0, 0, 0, 0 };
@@ -63,12 +64,6 @@ History::History()
                 this->_counter_moves[i][j][k] = 0;
             }
         for (auto &item: this->_corrhist_pawn[i])
-            item = 0;
-        for (auto &item: this->_corrhist_material[i])
-            item = 0;
-        for (auto &item: this->_corrhist_minor[i])
-            item = 0;
-        for (auto &item: this->_corrhist_major[i])
             item = 0;
     }
 }
@@ -154,12 +149,9 @@ void Moves::update_history(int depth, int color)
     }
 }
 
-void Moves::update_corrhist(int color, u64 hash_pawn, u64 hash_mat, u64 hash_minor, u64 hash_major, int bonus)
+void Moves::update_corrhist(int color, u64 hash_pawn, int bonus)
 {
-    this->corrhist_bonus(this->_history->_corrhist_pawn[color][hash_pawn & 16383], bonus);
-    // this->corrhist_bonus(this->_history->_corrhist_material[color][hash_mat & 32767], bonus);
-    // this->corrhist_bonus(this->_history->_corrhist_minor[color][hash_minor & 16383], bonus);
-    // this->corrhist_bonus(this->_history->_corrhist_major[color][hash_major & 16383], bonus);
+    this->corrhist_bonus(this->_history->_corrhist_pawn[color][hash_pawn & 32767], bonus);
 }
 
 void Moves::update_killers(u16 move)
@@ -780,6 +772,7 @@ void Moves::history_bonus(int &node, int bonus)
 
 void Moves::corrhist_bonus(int &node, int bonus)
 {
+    bonus = std::clamp(bonus, -256, 256);
     node += bonus - node * std::abs(bonus) / 1024;
 }
 
