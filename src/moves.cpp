@@ -151,6 +151,7 @@ void Moves::update_history(int depth, int color)
 
 void Moves::update_corrhist(int color, u64 hash_pawn, int bonus)
 {
+    bonus = std::clamp(bonus, -256, 256);
     this->corrhist_bonus(this->_history->_corrhist_pawn[color][hash_pawn & 32767], bonus);
 }
 
@@ -772,7 +773,6 @@ void Moves::history_bonus(int &node, int bonus)
 
 void Moves::corrhist_bonus(int &node, int bonus)
 {
-    bonus = std::clamp(bonus, -256, 256);
     node += bonus - node * std::abs(bonus) / 1024;
 }
 
