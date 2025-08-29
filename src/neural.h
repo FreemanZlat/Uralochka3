@@ -14,7 +14,7 @@
 
 #define PADDING         (32-OUT_SIZE)       // PSQT
 
-#define HIDDEN2_SIZE    (8)
+#define HIDDEN2_SIZE    (10)
 #define HIDDEN3_SIZE    (32)
 
 #ifdef PADDING
