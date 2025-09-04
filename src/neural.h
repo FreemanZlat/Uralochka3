@@ -8,13 +8,13 @@
 #define K_SIZE          (16)
 #define P_SIZE          (768)
 #define IN_SIZE         (K_SIZE*P_SIZE)
-#define HIDDEN_SIZE     (1024)
+#define HIDDEN_SIZE     (1280)
 
 #define OUT_SIZE        (6)                 // S_SIZE
 
 #define PADDING         (32-OUT_SIZE)       // PSQT
 
-#define HIDDEN2_SIZE    (8)
+#define HIDDEN2_SIZE    (6)
 #define HIDDEN3_SIZE    (32)
 
 #ifdef PADDING
@@ -32,16 +32,16 @@
 
 #if defined(__AVX512F__)
 #define BIT_ALIGNMENT   (512)
-#define NUM_REGS_1     (11)
-#define NUM_REGS_2     (0)
+#define NUM_REGS_1     (16)
+#define NUM_REGS_2     (9)
 #elif defined(__AVX2__)
 #define BIT_ALIGNMENT   (256)
-#define NUM_REGS_1     (11)
-#define NUM_REGS_2     (0)
+#define NUM_REGS_1     (14)
+#define NUM_REGS_2     (12)
 #elif defined(__SSE2__)
 #define BIT_ALIGNMENT   (128)
-#define NUM_REGS_1     (11)
-#define NUM_REGS_2     (0)
+#define NUM_REGS_1     (8)
+#define NUM_REGS_2     (4)
 #endif
 #define COUNT_32_BIT   (BIT_ALIGNMENT / 32)
 #define COUNT_16_BIT   (BIT_ALIGNMENT / 16)
