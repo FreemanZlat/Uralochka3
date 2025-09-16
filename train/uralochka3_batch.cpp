@@ -5,6 +5,9 @@
 #include <thread>
 #include <memory.h>
 
+#include <iostream>
+#include <fstream>
+
 #include <cnpy.h>
 
 #include "ndarray.h"
@@ -15,73 +18,37 @@
 #define FILE_SIZE   (10000000)
 #define EVAL_COEFF  (0.5f)
 
-float sigmoid(float data)
+static float sigmoid(float data)
 {
     return 1.0f / (1.0f + std::exp(-data));
 }
 
 static const int KING_TABLE[64] =
 {
-// Table-10
-//    0,  1,  2,  3,  3,  2,  1,  0,
-//    4,  4,  5,  5,  5,  5,  4,  4,
-//    6,  6,  7,  7,  7,  7,  6,  6,
-//    6,  6,  7,  7,  7,  7,  6,  6,
-//    8,  8,  8,  8,  8,  8,  8,  8,
-//    8,  8,  8,  8,  8,  8,  8,  8,
-//    9,  9,  9,  9,  9,  9,  9,  9,
-//    9,  9,  9,  9,  9,  9,  9,  9
-// Table-12
-//     0,  1,  2,  3,  3,  2,  1,  0,
-//     4,  5,  6,  7,  7,  6,  5,  4,
-//     4,  5,  6,  7,  7,  6,  5,  4,
-//     8,  8,  9,  9,  9,  9,  8,  8,
-//     8,  8,  9,  9,  9,  9,  8,  8,
-//    10, 10, 11, 11, 11, 11, 10, 10,
-//    10, 10, 11, 11, 11, 11, 10, 10,
-//    10, 10, 11, 11, 11, 11, 10, 10
-// Table-16 (Koivisto)
-     0,  1,  2,  3,  3,  2,  1,  0,
-     4,  5,  6,  7,  7,  6,  5,  4,
-     8,  9, 10, 11, 11, 10,  9,  8,
-     8,  9, 10, 11, 11, 10,  9,  8,
-    12, 12, 13, 13, 13, 13, 12, 12,
-    12, 12, 13, 13, 13, 13, 12, 12,
-    14, 14, 15, 15, 15, 15, 14, 14,
-    14, 14, 15, 15, 15, 15, 14, 14
-// Table-24
-//     0,  1,  2,  3,  3,  2,  1,  0,
-//     4,  5,  6,  7,  7,  6,  5,  4,
-//     8,  9, 10, 11, 11, 10,  9,  8,
-//    12, 13, 14, 15, 15, 14, 13, 12,
-//    16, 17, 18, 19, 19, 18, 17, 16,
-//    16, 17, 18, 19, 19, 18, 17, 16,
-//    20, 21, 22, 23, 23, 22, 21, 20,
-//    20, 21, 22, 23, 23, 22, 21, 20
-// Table-32
-//     0,  1,  2,  3,  3,  2,  1,  0,
-//     4,  5,  6,  7,  7,  6,  5,  4,
-//     8,  9, 10, 11, 11, 10,  9,  8,
-//    12, 13, 14, 15, 15, 14, 13, 12,
-//    16, 17, 18, 19, 19, 18, 17, 16,
-//    20, 21, 22, 23, 23, 22, 21, 20,
-//    24, 25, 26, 27, 27, 26, 25, 24,
-//    28, 29, 30, 31, 31, 30, 29, 28
+    // Table-16 (Koivisto)
+        0,  1,  2,  3,  3,  2,  1,  0,
+        4,  5,  6,  7,  7,  6,  5,  4,
+        8,  9, 10, 11, 11, 10,  9,  8,
+        8,  9, 10, 11, 11, 10,  9,  8,
+       12, 12, 13, 13, 13, 13, 12, 12,
+       12, 12, 13, 13, 13, 13, 12, 12,
+       14, 14, 15, 15, 15, 15, 14, 14,
+       14, 14, 15, 15, 15, 15, 14, 14
 };
 
 typedef unsigned char u8;
 
-int load(std::string filename,
-         numpyArray<int> _in1,
-         numpyArray<int> _in2,
-         numpyArray<long long> _stg,
-         numpyArray<float> _out,
-         numpyArray<int> _bat,
-         int batch_size,
-         int wdl_percent,
-         int draws_percent_i,
-         int draws_percent_n,
-         int eval_divider)
+static int load(std::string filename,
+                numpyArray<int> _in1,
+                numpyArray<int> _in2,
+                numpyArray<long long> _stg,
+                numpyArray<float> _out,
+                numpyArray<int> _bat,
+                int batch_size,
+                int wdl_percent,
+                int draws_percent_i,
+                int draws_percent_n,
+                int eval_divider)
 {
     Ndarray<int, 2> in1(_in1);
     Ndarray<int, 2> in2(_in2);
@@ -257,17 +224,17 @@ int load(std::string filename,
     return 0;
 }
 
-std::thread* thread = nullptr;
-numpyArray<int> in1;
-numpyArray<int> in2;
-numpyArray<long long> stg;
-numpyArray<float> out;
-numpyArray<int> bat;
-int in1_size = 0;
-int in2_size = 0;
-int stg_size = 0;
-int out_size = 0;
-int bat_size = 0;
+static std::thread* thread = nullptr;
+static numpyArray<int> in1;
+static numpyArray<int> in2;
+static numpyArray<long long> stg;
+static numpyArray<float> out;
+static numpyArray<int> bat;
+static int in1_size = 0;
+static int in2_size = 0;
+static int stg_size = 0;
+static int out_size = 0;
+    static int bat_size = 0;
 
 extern "C" {
 
@@ -312,6 +279,21 @@ int loader_init(numpyArray<int> _in1,
                 numpyArray<int> _bat,
                 int batch_size)
 {
+/*
+    std::ofstream file("loader_init.txt", std::ios::app);
+    file << "_in1.strides: " << _in1.strides[0] << " " << _in1.strides[1] << std::endl;
+    file << "_in1.shape: " << _in1.shape[0] << " " << _in1.shape[1] << std::endl;
+    file << "_in2.strides: " << _in2.strides[0] << " " << _in2.strides[1] << std::endl;
+    file << "_in2.shape: " << _in2.shape[0] << " " << _in2.shape[1] << std::endl;
+    file << "_stg.strides: " << _stg.strides[0] << " " << _stg.strides[1] << std::endl;
+    file << "_stg.shape: " << _stg.shape[0] << " " << _stg.shape[1] << std::endl;
+    file << "_out.strides: " << _out.strides[0] << std::endl;
+    file << "_out.shape: " << _out.shape[0] << std::endl;
+    file << "_bat.strides: " << _bat.strides[0] << " " << _bat.strides[1] << std::endl;
+    file << "_bat.shape: " << _bat.shape[0] << " " << _bat.shape[1] << std::endl;
+    file << std::endl;
+    file.close();
+*/
     in1_size = _in1.strides[0] * FILE_SIZE;
     in2_size = _in2.strides[0] * FILE_SIZE;
     stg_size = _stg.strides[0] * FILE_SIZE;

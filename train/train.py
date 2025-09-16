@@ -16,6 +16,9 @@ def train(model, optimizer, train_loader, epoch, total_epochs, batches):
     for ([in1, in2, val, stg], out) in train_loader:
         optimizer.zero_grad()
 
+        # if (batch_idx + 1) % 10 == 0:
+        model.clamp_l1()
+
         output = model(in1, in2, val, stg)
         loss = mse_loss(output[:, 0], out)
         loss.backward()
@@ -25,7 +28,7 @@ def train(model, optimizer, train_loader, epoch, total_epochs, batches):
 
         pbar.update()
         batch_idx += 1
-        if batch_idx % 100 == 0:
+        if batch_idx % 50 == 0:
             pbar.set_description_str('Loss: {:.8f}'.format(loss_sum / batch_idx))
 
     pbar.close()
@@ -35,6 +38,7 @@ def train(model, optimizer, train_loader, epoch, total_epochs, batches):
 
 def test(model, test_loader, batches):
     print("")
+    model.clamp_l1()
     model.eval()
     mse_loss = nn.MSELoss()
     pbar = tqdm(total=batches, unit='btch', miniters=50)

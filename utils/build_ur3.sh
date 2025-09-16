@@ -47,9 +47,9 @@ linux)
 win-clang)
     CMAKE="cmake -DCMAKE_C_COMPILER=x86_64-w64-mingw32-clang -DCMAKE_CXX_COMPILER=x86_64-w64-mingw32-clang++"
     EXE_FILE="wine Uralochka3.exe"
-    LLVM_PROFDATA=/root/llvm-mingw-20231017-msvcrt-ubuntu-20.04-x86_64/bin/llvm-profdata
-    export PATH=/root/llvm-mingw-20231017-msvcrt-ubuntu-20.04-x86_64/bin:${PATH}
-    WAIT_START=5
+    LLVM_PROFDATA=/root/llvm-mingw-20250709-msvcrt-ubuntu-22.04-x86_64/bin/llvm-profdata
+    export PATH=/root/llvm-mingw-20250709-msvcrt-ubuntu-22.04-x86_64/bin:${PATH}
+    WAIT_START=6
     ;;
 
 win-mxe)
@@ -57,7 +57,7 @@ win-mxe)
     EXE_FILE="wine Uralochka3.exe"
     LLVM_PROFDATA=
     export PATH=/root/mxe/usr/bin:${PATH}
-    WAIT_START=5
+    WAIT_START=6
     ;;
 
 *)

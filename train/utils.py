@@ -5,7 +5,7 @@ import requests
 import time
 
 # TELEGRAM_TOKEN = ""
-# TELEGRAM_CHAT_ID = "154308653"
+# TELEGRAM_CHAT_ID = ""
 
 
 def telegram_bot_sendtext(bot_message):

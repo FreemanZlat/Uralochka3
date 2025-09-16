@@ -15,7 +15,7 @@
 // Спецификация протокола: http://wbec-ridderkerk.nl/html/UCIProtocol.html
 
 #ifdef USE_NN
-static const int EVAL_SCALE = 243;    // 243;
+static const int EVAL_SCALE = 250;
 #else
 static const int EVAL_SCALE = 100;
 #endif

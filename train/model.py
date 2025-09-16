@@ -5,44 +5,52 @@ import torch.nn.functional as F
 from feature_transformer import DoubleFeatureTransformerSlice
 
 
+USE_PSQT = True
+USE_S = True
+USE_L3 = True
+USE_L4 = True
+
+PSQT_COEFF = 512
+
+L1_CLAMP = 5
+
 K_SIZE = 16
 P_SIZE = 768
-S_SIZE = 6
+if USE_S:
+    S_SIZE = 6
+else:
+    S_SIZE = 1
 
-# PADDING = 0
-PADDING = 32 - S_SIZE   # 32 - size of avx512 registry
+if USE_PSQT:
+    PADDING = 32 - S_SIZE   # 32 - size of avx512 registry
+else:
+    PADDING = 0
 
-HIDDEN_SIZE = 1024
+HIDDEN_SIZE = 1280
+HIDDEN2_SIZE = 6
+HIDDEN3_SIZE = 32
 
 L1_INPUT_SIZE = K_SIZE * P_SIZE
-# L1_OUTPUT_SIZE = HIDDEN_SIZE
-# L1_OUTPUT_SIZE_P = L1_OUTPUT_SIZE
-L1_OUTPUT_SIZE = HIDDEN_SIZE + S_SIZE
-L1_OUTPUT_SIZE_P = L1_OUTPUT_SIZE + PADDING
+if USE_PSQT:
+    L1_OUTPUT_SIZE = HIDDEN_SIZE + S_SIZE
+    L1_OUTPUT_SIZE_P = L1_OUTPUT_SIZE + PADDING
+else:
+    L1_OUTPUT_SIZE = HIDDEN_SIZE
+    L1_OUTPUT_SIZE_P = L1_OUTPUT_SIZE
 
-L2_INPUT_SIZE = HIDDEN_SIZE * 2
-L2_OUTPUT_SIZE = S_SIZE
+L2_INPUT_SIZE = HIDDEN_SIZE
 
-QUANTIZATION_COEFF_L1 = 64
-QUANTIZATION_COEFF_L2 = 512
-
-
-# class NetOld(nn.Module):
-#     def __init__(self):
-#         super(NetOld, self).__init__()
-#         self.layer1 = nn.Linear(L1_INPUT_SIZE, HIDDEN_SIZE)
-#         self.layer2 = nn.Linear(HIDDEN_SIZE*2, 1)
-#
-#     def forward(self, x, y):
-#         x = self.layer1(x)
-#         x = F.relu(x)
-#         y = self.layer1(y)
-#         y = F.relu(y)
-#         c = torch.cat((x, y), dim=1)
-#         #c = F.relu(c)
-#         #c = F.mish(c)
-#         c = self.layer2(c)
-#         return torch.sigmoid(c)
+if USE_L3:
+    L2_OUTPUT_SIZE = HIDDEN2_SIZE * S_SIZE
+    L3_INPUT_SIZE = HIDDEN2_SIZE
+    if USE_L4:
+        L3_OUTPUT_SIZE = HIDDEN3_SIZE * S_SIZE
+        L4_INPUT_SIZE = HIDDEN3_SIZE
+        L4_OUTPUT_SIZE = S_SIZE
+    else:
+        L3_OUTPUT_SIZE = S_SIZE
+else:
+    L2_OUTPUT_SIZE = S_SIZE
 
 
 class Net(nn.Module):
@@ -50,8 +58,15 @@ class Net(nn.Module):
         super(Net, self).__init__()
         self.layer1 = DoubleFeatureTransformerSlice(L1_INPUT_SIZE, L1_OUTPUT_SIZE)
         self.layer2 = nn.Linear(L2_INPUT_SIZE, L2_OUTPUT_SIZE)
+        if USE_L3:
+            self.layer3 = nn.Linear(L3_INPUT_SIZE, L3_OUTPUT_SIZE)
+        if USE_L4:
+            self.layer4 = nn.Linear(L4_INPUT_SIZE, L4_OUTPUT_SIZE)
 
-        self.psqt_coeff = eval_divider / QUANTIZATION_COEFF_L1
+        if not USE_PSQT:
+            return
+
+        self.psqt_coeff = eval_divider / PSQT_COEFF
 
         pieces = [110.0, 370.0, 364.0, 589.0, 1138.0, -110.0, -370.0, -364.0, -589.0, -1138.0, 0.0, 0.0]
 
@@ -60,28 +75,47 @@ class Net(nn.Module):
             for k in range(K_SIZE):
                 for p in range(12):
                     for sq in range(64):
-                        self.layer1.weight.data[k * P_SIZE + p * 64 + sq, HIDDEN_SIZE + i] = pieces[p] *\
-                                                                                             self.psqt_coeff /\
-                                                                                             eval_divider
+                        self.layer1.weight.data[k * P_SIZE + p * 64 + sq, HIDDEN_SIZE + i] = pieces[p] / PSQT_COEFF
 
     def forward(self, x, y, v, s):
         x, y = self.layer1(x, v, y, v)
 
-        # x = F.relu(x)
-        # y = F.relu(y)
-        # c = torch.cat((x, y), dim=1)
-        # c = self.layer2(c)
-        # c = c.gather(1, s)
+        s_f = s.flatten() + torch.arange(0,S_SIZE*s.shape[0],S_SIZE, device=next(self.parameters()).device)
 
-        x1, x2 = torch.split(x, x.shape[1]-S_SIZE, dim=1)
-        x1 = F.relu(x1)
-        y1, y2 = torch.split(y, y.shape[1]-S_SIZE, dim=1)
-        y1 = F.relu(y1)
-        c = torch.cat((x1, y1), dim=1)
-        c = self.layer2(c) + (x2 - y2) * (0.5 / self.psqt_coeff)
-        c = c.gather(1, s)
+        if USE_PSQT:
+            x1, x2 = torch.split(x, x.shape[1]-S_SIZE, dim=1)
+            y1, y2 = torch.split(y, y.shape[1]-S_SIZE, dim=1)
+            c = torch.cat((x1, y1), dim=1)
+        else:
+            c = torch.cat((x, y), dim=1)
+
+        c = torch.clamp(c, 0.0, 1.0)
+
+        c_spl = torch.split(c, HIDDEN_SIZE // 2, dim=1)
+        c = torch.cat((c_spl[0] * c_spl[1], c_spl[2] * c_spl[3]), dim=1)
+
+        c = self.layer2(c)
+
+        if USE_L3:
+            c = c.reshape((-1, S_SIZE, HIDDEN2_SIZE)).view(-1, HIDDEN2_SIZE)[s_f]
+            c = torch.clamp(c, 0.0, 1.0)
+            c = torch.pow(c, 2)
+            c = self.layer3(c)
+        if USE_L4:
+            c = c.reshape((-1, S_SIZE, HIDDEN3_SIZE)).view(-1, HIDDEN3_SIZE)[s_f]
+            c = torch.clamp(c, 0.0, 1.0)
+            c = self.layer4(c)
+
+        if USE_PSQT:
+            c = c + (x2 - y2) * (0.5 / self.psqt_coeff)
+
+        if USE_S:
+            c = c.gather(1, s)
 
         return torch.sigmoid(c)
+
+    def clamp_l1(self):
+        self.layer1.weight.data.clamp_(-L1_CLAMP, L1_CLAMP)
 
     def save_model(self, model_name, nn_name, optimizer, epoch):
         if model_name is not None:
@@ -95,12 +129,18 @@ class Net(nn.Module):
 
         net_size = L1_OUTPUT_SIZE_P + L1_INPUT_SIZE * L1_OUTPUT_SIZE_P + \
                    L2_OUTPUT_SIZE + L2_INPUT_SIZE * L2_OUTPUT_SIZE
-        net = np.zeros(net_size, dtype=np.int16)
+        if USE_L3:
+            net_size = net_size + L3_OUTPUT_SIZE + L3_INPUT_SIZE * L3_OUTPUT_SIZE
+        if USE_L4:
+            net_size = net_size + L4_OUTPUT_SIZE + L4_INPUT_SIZE * L4_OUTPUT_SIZE
+
         counter = 0
+
+        net = np.zeros(net_size, dtype=np.float32)
 
         wlist = self.state_dict()['layer1.bias'].cpu().numpy().tolist()
         for w in wlist:
-            net[counter] = round(w * QUANTIZATION_COEFF_L1)
+            net[counter] = w
             counter += 1
         for i in range(PADDING):
             net[counter] = 0
@@ -109,7 +149,7 @@ class Net(nn.Module):
         wlist = self.state_dict()['layer1.weight'].cpu().numpy().tolist()
         for ws in wlist:
             for w in ws:
-                net[counter] = round(w * QUANTIZATION_COEFF_L1)
+                net[counter] = w
                 counter += 1
             for i in range(PADDING):
                 net[counter] = 0
@@ -117,15 +157,40 @@ class Net(nn.Module):
 
         wlist = self.state_dict()['layer2.bias'].cpu().numpy().tolist()
         for w in wlist:
-            net[counter] = round(w * QUANTIZATION_COEFF_L1 * QUANTIZATION_COEFF_L2)
+            net[counter] = w
             counter += 1
 
         wlist = self.state_dict()['layer2.weight'].cpu().numpy().tolist()
         for ws in wlist:
             for w in ws:
-                net[counter] = round(w * QUANTIZATION_COEFF_L2)
+                net[counter] = w
                 counter += 1
 
+        if USE_L3:
+            wlist = self.state_dict()['layer3.bias'].cpu().numpy().tolist()
+            for w in wlist:
+                net[counter] = w
+                counter += 1
+
+            wlist = self.state_dict()['layer3.weight'].cpu().numpy().tolist()
+            for ws in wlist:
+                for w in ws:
+                    net[counter] = w
+                    counter += 1
+
+        if USE_L4:
+            wlist = self.state_dict()['layer4.bias'].cpu().numpy().tolist()
+            for w in wlist:
+                net[counter] = w
+                counter += 1
+
+            wlist = self.state_dict()['layer4.weight'].cpu().numpy().tolist()
+            for ws in wlist:
+                for w in ws:
+                    net[counter] = w
+                    counter += 1
+
+        # print("Save! net_size: {}  counter: {}".format(net_size, counter))
         net.tofile(nn_name)
 
     def load_model(self, model_name, optimizer):
@@ -135,26 +200,3 @@ class Net(nn.Module):
         self.load_state_dict(checkpoint['model'])
         optimizer.load_state_dict(checkpoint['optimizer'])
         return initial_epoch
-
-
-# def convert(old_net, new_net):
-#     print("Convert!")
-#     print("old L1 bias size:", old_net.layer1.bias.data.size())
-#     print("new L1 bias size:", new_net.layer1.bias.data.size())
-#     print("old L1 weights size:", old_net.layer1.weight.data.size())
-#     print("new L1 weights size:", new_net.layer1.weight.data.size())
-#     for i in range(HIDDEN_SIZE):
-#         new_net.layer1.bias.data[i] = old_net.layer1.bias.data[i]
-#         for j in range(L1_INPUT_SIZE):
-#             new_net.layer1.weight.data[j, i] = old_net.layer1.weight.data[i, j]
-#
-#     print("old L2 bias size:", old_net.layer2.bias.data.size())
-#     print("new L2 bias size:", new_net.layer2.bias.data.size())
-#     print("old L2 weights size:", old_net.layer2.weight.data.size())
-#     print("new L2 weights size:", new_net.layer2.weight.data.size())
-#     for i in range(L2_OUTPUT_SIZE):
-#         new_net.layer2.bias.data[i] = old_net.layer2.bias.data[0]
-#         for j in range(L2_INPUT_SIZE):
-#             new_net.layer2.weight.data[i, j] = old_net.layer2.weight.data[0, j]
-#
-#     return 0

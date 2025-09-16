@@ -1,43 +1,41 @@
 import chess.pgn
+import math
 
-# pgn = open("w0-self.pgn")
-pgn = open("test-w4-w5.pgn")
+pgn = open("3_42.pgn")
 
 count_draws = 0
 count_white = 0
 count_black = 0
 
-draws = []
+stats = []
 
 while True:
-    print(count_draws + count_white + count_black)
-
     game = chess.pgn.read_game(pgn)
     if game is None:
         break
 
     try:
-        ply_count = int(game.headers["PlyCount"])
         result = game.headers["Result"]
     except KeyError:
         continue
 
+    res = 0
     if result == "1-0":
         count_white += 1
-        continue
+        res = 1
     elif result == "0-1":
         count_black += 1
-        continue
+        res = -1
     elif result == "1/2-1/2":
         count_draws += 1
+        res = 0
     else:
         continue
 
-    eval_min = 0
-    eval_max = 0
-    for pos in game.mainline():
-        # print(pos.board().fen())
+    print(f"d{count_draws} + w{count_white} + b{count_black} = {count_draws + count_white + count_black}")
 
+    ply = 0
+    for pos in game.mainline():
         comment = pos.comment
         if comment == "book" or comment == "":
             continue
@@ -50,21 +48,31 @@ while True:
         if pos.turn() == chess.WHITE:
             eval = -eval
 
-        eval_min = min(eval, eval_min)
-        eval_max = max(eval, eval_max)
+        stats.append({'eval': eval, 'res': res})
+        if eval != 0:
+            stats.append({'eval': -eval, 'res': -res})
 
-    draws.append({'min': eval_min, 'max': eval_max})
+        ply += 1
+        if ply > 100:
+            break
 
-print(len(draws))
+    # if count_draws == 1000:
+    #     break
 
-draws_max = sorted(draws, key=lambda x: x['max'], reverse=True)
-draws_min = sorted(draws, key=lambda x: x['min'])
+print(f"stats len: {len(stats)}")
 
-for idx in range(0, count_draws):
-    print(f'{idx+1}/{count_draws} ({round(100.0*(idx+1)/count_draws, 2)}) : '
-          f'{draws_max[idx]["max"]} -- {-draws_min[idx]["min"]}')
+SCALE = 5
 
-eval_white = draws_max[count_white]['max']
-eval_black = -draws_min[count_black]['min']
-eval_res = 0.5 * (eval_white + eval_black)
-print(f'{eval_white} -- {eval_black} --- {eval_res}')
+stats_sorted = sorted(stats, key=lambda x: x['eval'])
+graph = {}
+for stat in stats_sorted:
+    idx = math.floor((stat['eval'] + SCALE/2) / SCALE)
+    if idx not in graph:
+        graph[idx] = { 'sum': 0, "cnt": 0 }
+    graph[idx]['sum'] += stat['res']
+    graph[idx]['cnt'] += 1
+for idx, val in graph.items():
+    val['sum'] /= val['cnt']
+    print(f"{idx*SCALE} : {val['sum']:.4f} - ({val['cnt']})")
+
+
